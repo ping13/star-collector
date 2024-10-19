@@ -125,8 +125,8 @@ function create_rss_item($status) {
         }
     }
     
-    $cdata = $item->addChild('description');
-    $cdata->addCData(htmlspecialchars($description));
+    $description_node = $item->addChild('description');
+    $description_node->{0} = '<![CDATA[' . htmlspecialchars($description) . ']]>';
     
     // Anhänge als separate Elemente hinzufügen
     foreach ($status['media_attachments'] as $media) {
@@ -145,7 +145,7 @@ function create_rss_item($status) {
 
 // Hauptfunktion zum Erstellen des RSS-Feeds
 function generate_rss_feed() {
-    global $mastodon_username, $feed_item_limit;
+    global $mastodon_username, $feed_item_limit, $mastodon_instance;
     debug("Starting RSS feed generation for user: $mastodon_username with limit: $feed_item_limit");
     $favorites = fetch_mastodon_data("/api/v1/favourites");
     if ($favorites === null) {
