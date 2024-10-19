@@ -1,4 +1,5 @@
 <?php
+ini_set('display_errors', 'stderr');
 // For production (no debug output):
 // error_reporting(0);
 
@@ -10,9 +11,8 @@ function debug($message, $data = null) {
     if (error_reporting() !== 0) {
         fwrite(STDERR, "DEBUG: $message\n");
         if ($data !== null) {
-            fwrite(STDERR, "Data: " . print_r($data, true) . "\n");
+            fwrite(STDERR, "Data: " . print_r($data, true));
         }
-        fwrite(STDERR, "\n");
     }
 }
 
@@ -70,40 +70,46 @@ debug("Mastodon username: $mastodon_username");
 debug("Feed item limit: $feed_item_limit");
 
 // Funktion zum Abrufen von Daten von der Mastodon API
-function fetch_mastodon_data($endpoint, $params = array(), $max_id = null) {
-    global $mastodon_instance, $access_token;
-    if ($max_id !== null) {
-        $params['max_id'] = $max_id;
-    }
-    $url = $mastodon_instance . $endpoint;
-    if (!empty($params)) {
-        $url .= '?' . http_build_query($params);
-    }
+function fetch_mastodon_data($url) {
+    global $access_token;
     debug("Fetching data from: $url");
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, true); // Include headers in output
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $access_token
     ]);
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     debug("HTTP response code: $http_code");
-    curl_close($ch);
-    
+
     if ($response === false) {
         $error = curl_error($ch);
         $errno = curl_errno($ch);
         debug("cURL error ($errno): $error");
-        return array('data' => null, 'http_code' => $http_code);
+        curl_close($ch);
+        return array('data' => null, 'http_code' => $http_code, 'next_url' => null);
     }
-    
-    $data = json_decode($response, true);
+
+    // Separate headers and body
+    $headers = substr($response, 0, $header_size);
+    $body = substr($response, $header_size);
+    curl_close($ch);
+
+    // Extract Link header for pagination
+    $next_url = null;
+    if (preg_match('/<([^>]+)>; rel="next"/', $headers, $matches)) {
+        $next_url = $matches[1];
+    }
+
+    $data = json_decode($body, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         debug("JSON decode error: " . json_last_error_msg());
-        return array('data' => null, 'http_code' => $http_code);
+        return array('data' => null, 'http_code' => $http_code, 'next_url' => null);
     }
     debug("Fetched data", ['count' => is_array($data) ? count($data) : 'Not an array']);
-    return array('data' => $data, 'http_code' => $http_code);
+    return array('data' => $data, 'http_code' => $http_code, 'next_url' => $next_url);
 }
 
 // Funktion zum Erstellen eines RSS-Items
@@ -167,14 +173,12 @@ function generate_rss_feed() {
     $favorites = [];
     $max_id = null;
     $page_count = 0;
-    $items_per_page = 10; 
-    
+    $items_per_page = 40; 
+
+    $next_url = $mastodon_instance ."/api/v1/favourites?limit=" . $items_per_page;
+
     while (count($favorites) < $feed_item_limit) {
-        $params = ['limit' => $items_per_page];
-        if ($max_id) {
-            $params['max_id'] = $max_id;
-        }
-        $result = fetch_mastodon_data("/api/v1/favourites", $params, $max_id);
+        $result = fetch_mastodon_data($next_url);
         if ($result['http_code'] == 429) {
             debug("Received HTTP 429 (Too Many Requests) while fetching favorites. Stopping favorites fetch.");
             break;
@@ -184,7 +188,9 @@ function generate_rss_feed() {
             break;
         }
         $favorites = array_merge($favorites, $page);
-        $max_id = end($page)['id'];
+
+        $next_url = $result['next_url'];
+        debug("next_url " . $next_url);
         $page_count++;
         debug("Fetched favorites page $page_count, total favorites: " . count($favorites));
         if (count($page) < $items_per_page) {
@@ -199,23 +205,26 @@ function generate_rss_feed() {
     $bookmarks = [];
     $max_id = null;
     $page_count = 0;
+
+    $next_url = $mastodon_instance ."/api/v1/bookmarks?limit=" . $items_per_page;
+
     while (count($bookmarks) < $feed_item_limit) {
-        $params = ['limit' => $items_per_page];
-        if ($max_id) {
-            $params['max_id'] = $max_id;
-        }
-        $result = fetch_mastodon_data("/api/v1/bookmarks", $params, $max_id);
+        $result = fetch_mastodon_data($next_url);
         if ($result['http_code'] == 429) {
-            debug("Received HTTP 429 (Too Many Requests) while fetching bookmarks. Stopping bookmarks fetch.");
+            debug("Received HTTP 429 (Too Many Requests) while fetching favorites. Stopping favorites fetch.");
             break;
         }
         $page = $result['data'];
         if ($page === null || empty($page)) {
             break;
         }
+
         $bookmarks = array_merge($bookmarks, $page);
-        $max_id = end($page)['id'];
+
+        $next_url = $result['next_url'];
+        debug("next_url " . $next_url);
         $page_count++;
+
         debug("Fetched bookmarks page $page_count, total bookmarks: " . count($bookmarks));
         if (count($page) < $items_per_page) {
             break;

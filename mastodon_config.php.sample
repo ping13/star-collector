@@ -1,0 +1,6 @@
+<?php 
+
+$access_token = 'DgHtpMCLCoHvkQlCmPxcKPc6hQugYCLvZh_ghM0yf9M'; 
+$mastodon_instance = 'https://swiss.social';
+$mastodon_username = 'ping13';
+?>
