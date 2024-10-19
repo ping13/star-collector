@@ -110,29 +110,28 @@ function create_rss_item($status) {
     $item->addChild('pubDate', date(DATE_RSS, strtotime($status['created_at'])));
     
     // Erstellen einer detaillierten Beschreibung mit eingebetteten Medien
-    $description = "<![CDATA[" . $status['content'];
+    $description = $status['content'];
     if (!empty($status['media_attachments'])) {
         $description .= "\n\n<h3>Anhänge:</h3>\n";
         foreach ($status['media_attachments'] as $media) {
             switch ($media['type']) {
                 case 'image':
-                    $description .= "<p><img src='" . htmlspecialchars($media['url']) . "' alt='" . htmlspecialchars($media['description']) . "' style='max-width:100%;'/></p>\n";
+                    $description .= "<p><img src='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "' alt='" . htmlspecialchars($media['description'], ENT_QUOTES, 'UTF-8') . "' style='max-width:100%;'/></p>\n";
                     break;
                 case 'video':
-                    $description .= "<p><video src='" . htmlspecialchars($media['url']) . "' controls style='max-width:100%;'>Ihr Browser unterstützt das Video-Tag nicht.</video></p>\n";
+                    $description .= "<p><video src='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "' controls style='max-width:100%;'>Ihr Browser unterstützt das Video-Tag nicht.</video></p>\n";
                     break;
                 case 'gifv':
-                    $description .= "<p><img src='" . htmlspecialchars($media['url']) . "' alt='" . htmlspecialchars($media['description']) . "' style='max-width:100%;'/></p>\n";
+                    $description .= "<p><img src='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "' alt='" . htmlspecialchars($media['description'], ENT_QUOTES, 'UTF-8') . "' style='max-width:100%;'/></p>\n";
                     break;
                 default:
-                    $description .= "<p>Anhang: <a href='" . htmlspecialchars($media['url']) . "'>" . htmlspecialchars($media['type']) . "</a></p>\n";
+                    $description .= "<p>Anhang: <a href='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($media['type'], ENT_QUOTES, 'UTF-8') . "</a></p>\n";
             }
         }
     }
-    $description .= "]]>";
     
     $descriptionNode = $item->addChild('description');
-    $descriptionNode[0] = $description;
+    $descriptionNode[0] = '<![CDATA[' . $description . ']]>';
     
     // Anhänge als separate Elemente hinzufügen
     foreach ($status['media_attachments'] as $media) {
@@ -194,9 +193,11 @@ function generate_rss_feed() {
     $channel->addChild('link', "$mastodon_instance/@$mastodon_username");
     $channel->addChild('description', "Ein Feed der Mastodon Favoriten und Lesezeichen von @$mastodon_username");
     
-    // Add atom:link element
+    // Add atom:link element with a proper, absolute URL
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+    $full_url = $protocol . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
     $atomLink = $channel->addChild('atom:link', null, 'http://www.w3.org/2005/Atom');
-    $atomLink->addAttribute('href', "http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]");
+    $atomLink->addAttribute('href', $full_url);
     $atomLink->addAttribute('rel', 'self');
     $atomLink->addAttribute('type', 'application/rss+xml');
 
