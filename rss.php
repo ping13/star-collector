@@ -83,23 +83,24 @@ function fetch_mastodon_data($endpoint, $params = array()) {
         'Authorization: Bearer ' . $access_token
     ]);
     $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    debug("HTTP response code: $http_code");
+    curl_close($ch);
+    
     if ($response === false) {
         $error = curl_error($ch);
         $errno = curl_errno($ch);
         debug("cURL error ($errno): $error");
-        curl_close($ch);
-        return null;
+        return array('data' => null, 'http_code' => $http_code);
     }
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    debug("HTTP response code: $http_code");
-    curl_close($ch);
+    
     $data = json_decode($response, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         debug("JSON decode error: " . json_last_error_msg());
-        return null;
+        return array('data' => null, 'http_code' => $http_code);
     }
     debug("Fetched data", ['count' => is_array($data) ? count($data) : 'Not an array']);
-    return $data;
+    return array('data' => $data, 'http_code' => $http_code);
 }
 
 // Funktion zum Erstellen eines RSS-Items
@@ -159,18 +160,21 @@ function create_rss_item($status) {
 function generate_rss_feed() {
     global $mastodon_username, $feed_item_limit, $mastodon_instance;
     debug("Starting RSS feed generation for user: $mastodon_username with limit: $feed_item_limit");
-
-    $items_per_page = 40;
     
     $favorites = [];
     $max_id = null;
     $page_count = 0;
     while (true) {
-        $params = ['limit' => $items_per_page];
+        $params = ['limit' => 40];
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
-        $page = fetch_mastodon_data("/api/v1/favourites", $params);
+        $result = fetch_mastodon_data("/api/v1/favourites", $params);
+        if ($result['http_code'] == 429) {
+            debug("Received HTTP 429 (Too Many Requests) while fetching favorites. Stopping favorites fetch.");
+            break;
+        }
+        $page = $result['data'];
         if ($page === null || empty($page)) {
             break;
         }
@@ -178,10 +182,7 @@ function generate_rss_feed() {
         $max_id = end($page)['id'];
         $page_count++;
         debug("Fetched favorites page $page_count, total favorites: " . count($favorites));
-        if (count($page) < $items_per_page) {
-            break;
-        }
-        if ($page_count * $items_per_page > $feed_item_limit) {
+        if (count($page) < 40) {
             break;
         }
     }
@@ -191,11 +192,16 @@ function generate_rss_feed() {
     $max_id = null;
     $page_count = 0;
     while (true) {
-        $params = ['limit' => $items_per_page];
+        $params = ['limit' => 40];
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
-        $page = fetch_mastodon_data("/api/v1/bookmarks", $params);
+        $result = fetch_mastodon_data("/api/v1/bookmarks", $params);
+        if ($result['http_code'] == 429) {
+            debug("Received HTTP 429 (Too Many Requests) while fetching bookmarks. Stopping bookmarks fetch.");
+            break;
+        }
+        $page = $result['data'];
         if ($page === null || empty($page)) {
             break;
         }
@@ -203,10 +209,7 @@ function generate_rss_feed() {
         $max_id = end($page)['id'];
         $page_count++;
         debug("Fetched bookmarks page $page_count, total bookmarks: " . count($bookmarks));
-        if (count($page) < $items_per_page) {
-            break;
-        }
-        if ($page_count * $items_per_page > $feed_item_limit) {
+        if (count($page) < 40) {
             break;
         }
     }
