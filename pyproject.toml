@@ -1,0 +1,18 @@
+[project]
+name = "mastodon-rss"
+version = "0.1.0"
+description = "My Favs and Bookarks"
+authors = [
+    {name = "Stephan Heuel", email = "mail@ping13.net"}
+]
+requires-python = ">=3.10,<3.13"
+readme = "README.md"
+license = {file = "LICENSE"}
+
+[tool.uv]
+dev-dependencies = [
+  "aider-chat"
+]
+
+[tool.uv.sources]
+aider-chat = { git = "https://github.com/paul-gauthier/aider.git", branch = "main" }
