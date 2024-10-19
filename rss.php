@@ -1,9 +1,9 @@
 <?php
 // For production (no debug output):
-error_reporting(0);
+// error_reporting(0);
 
 // For debugging (uncomment the next line):
-// error_reporting(E_ALL);
+error_reporting(E_ALL);
 
 // Debug function
 function debug($message, $data = null) {
@@ -159,12 +159,14 @@ function create_rss_item($status) {
 function generate_rss_feed() {
     global $mastodon_username, $feed_item_limit, $mastodon_instance;
     debug("Starting RSS feed generation for user: $mastodon_username with limit: $feed_item_limit");
+
+    $items_per_page = 40;
     
     $favorites = [];
     $max_id = null;
     $page_count = 0;
     while (true) {
-        $params = ['limit' => 40];
+        $params = ['limit' => $items_per_page];
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
@@ -176,7 +178,10 @@ function generate_rss_feed() {
         $max_id = end($page)['id'];
         $page_count++;
         debug("Fetched favorites page $page_count, total favorites: " . count($favorites));
-        if (count($page) < 40) {
+        if (count($page) < $items_per_page) {
+            break;
+        }
+        if ($page_count * $items_per_page > $feed_item_limit) {
             break;
         }
     }
@@ -186,7 +191,7 @@ function generate_rss_feed() {
     $max_id = null;
     $page_count = 0;
     while (true) {
-        $params = ['limit' => 40];
+        $params = ['limit' => $items_per_page];
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
@@ -198,7 +203,10 @@ function generate_rss_feed() {
         $max_id = end($page)['id'];
         $page_count++;
         debug("Fetched bookmarks page $page_count, total bookmarks: " . count($bookmarks));
-        if (count($page) < 40) {
+        if (count($page) < $items_per_page) {
+            break;
+        }
+        if ($page_count * $items_per_page > $feed_item_limit) {
             break;
         }
     }
