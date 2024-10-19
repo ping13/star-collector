@@ -70,8 +70,11 @@ debug("Mastodon username: $mastodon_username");
 debug("Feed item limit: $feed_item_limit");
 
 // Funktion zum Abrufen von Daten von der Mastodon API
-function fetch_mastodon_data($endpoint, $params = array()) {
+function fetch_mastodon_data($endpoint, $params = array(), $max_id = null) {
     global $mastodon_instance, $access_token;
+    if ($max_id !== null) {
+        $params['max_id'] = $max_id;
+    }
     $url = $mastodon_instance . $endpoint;
     if (!empty($params)) {
         $url .= '?' . http_build_query($params);
@@ -171,7 +174,7 @@ function generate_rss_feed() {
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
-        $result = fetch_mastodon_data("/api/v1/favourites", $params);
+        $result = fetch_mastodon_data("/api/v1/favourites", $params, $max_id);
         if ($result['http_code'] == 429) {
             debug("Received HTTP 429 (Too Many Requests) while fetching favorites. Stopping favorites fetch.");
             break;
@@ -201,7 +204,7 @@ function generate_rss_feed() {
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
-        $result = fetch_mastodon_data("/api/v1/bookmarks", $params);
+        $result = fetch_mastodon_data("/api/v1/bookmarks", $params, $max_id);
         if ($result['http_code'] == 429) {
             debug("Received HTTP 429 (Too Many Requests) while fetching bookmarks. Stopping bookmarks fetch.");
             break;
