@@ -187,9 +187,15 @@ function generate_rss_feed() {
 
     foreach ($unique_statuses as $status) {
         $item = create_rss_item($status);
-        $dom_item = dom_import_simplexml($item);
-        $dom_item = $channel->ownerDocument->importNode($dom_item, true);
-        $channel->ownerDocument->documentElement->firstChild->appendChild($dom_item);
+        // Convert SimpleXMLElement to string and then parse it back to append to the channel
+        $item_xml = $item->asXML();
+        $parsed_item = new SimpleXMLElement($item_xml);
+        foreach ($parsed_item->children() as $child) {
+            $new_child = $channel->addChild($child->getName(), (string)$child);
+            foreach ($child->attributes() as $attr_key => $attr_value) {
+                $new_child->addAttribute($attr_key, (string)$attr_value);
+            }
+        }
     }
 
     debug("RSS feed generation complete");
