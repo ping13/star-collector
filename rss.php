@@ -164,7 +164,7 @@ function generate_rss_feed() {
     $favorites = [];
     $max_id = null;
     $page_count = 0;
-    $items_per_page = 40;
+    $items_per_page = 10;
     
     while (true) {
         $params = ['limit' => $items_per_page ];
@@ -238,10 +238,6 @@ function generate_rss_feed() {
     usort($unique_statuses, function($a, $b) {
         return strtotime($b['created_at']) - strtotime($a['created_at']);
     });
-
-    // Limit the number of items
-    $unique_statuses = array_slice($unique_statuses, 0, $feed_item_limit);
-    debug("Limited unique statuses", ['count' => count($unique_statuses)]);
 
     // RSS-Feed erstellen
     debug("Creating RSS feed XML");
