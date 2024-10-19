@@ -162,7 +162,8 @@ function generate_rss_feed() {
     
     $favorites = [];
     $max_id = null;
-    while (count($favorites) < $feed_item_limit) {
+    $page_count = 0;
+    while (true) {
         $params = ['limit' => 40];
         if ($max_id) {
             $params['max_id'] = $max_id;
@@ -173,6 +174,8 @@ function generate_rss_feed() {
         }
         $favorites = array_merge($favorites, $page);
         $max_id = end($page)['id'];
+        $page_count++;
+        debug("Fetched favorites page $page_count, total favorites: " . count($favorites));
         if (count($page) < 40) {
             break;
         }
@@ -181,7 +184,8 @@ function generate_rss_feed() {
 
     $bookmarks = [];
     $max_id = null;
-    while (count($bookmarks) < $feed_item_limit) {
+    $page_count = 0;
+    while (true) {
         $params = ['limit' => 40];
         if ($max_id) {
             $params['max_id'] = $max_id;
@@ -192,6 +196,8 @@ function generate_rss_feed() {
         }
         $bookmarks = array_merge($bookmarks, $page);
         $max_id = end($page)['id'];
+        $page_count++;
+        debug("Fetched bookmarks page $page_count, total bookmarks: " . count($bookmarks));
         if (count($page) < 40) {
             break;
         }
