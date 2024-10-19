@@ -1,16 +1,19 @@
 <?php
-// Enable error reporting for debugging
+// For production (no debug output):
 error_reporting(0);
-//error_reporting(E_ALL);
-//ini_set('display_errors', 1);
+
+// For debugging (uncomment the next line):
+// error_reporting(E_ALL);
 
 // Debug function
 function debug($message, $data = null) {
-    echo "DEBUG: $message\n";
-    if ($data !== null) {
-        echo "Data: " . print_r($data, true) . "\n";
+    if (error_reporting() !== 0) {
+        echo "DEBUG: $message\n";
+        if ($data !== null) {
+            echo "Data: " . print_r($data, true) . "\n";
+        }
+        echo "\n";
     }
-    echo "\n";
 }
 
 // Konfiguration
