@@ -164,8 +164,10 @@ function generate_rss_feed() {
     $favorites = [];
     $max_id = null;
     $page_count = 0;
+    $items_per_page = 40;
+    
     while (true) {
-        $params = ['limit' => 40];
+        $params = ['limit' => $items_per_page ];
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
@@ -182,9 +184,13 @@ function generate_rss_feed() {
         $max_id = end($page)['id'];
         $page_count++;
         debug("Fetched favorites page $page_count, total favorites: " . count($favorites));
-        if (count($page) < 40) {
+        if (count($page) < $items_per_page) {
             break;
         }
+        if ($page_count * $items_per_page > $feed_item_limit) {
+            break;
+        }
+
     }
     debug("Total favorites fetched", ['count' => count($favorites)]);
 
@@ -192,7 +198,7 @@ function generate_rss_feed() {
     $max_id = null;
     $page_count = 0;
     while (true) {
-        $params = ['limit' => 40];
+        $params = ['limit' => $items_per_page];
         if ($max_id) {
             $params['max_id'] = $max_id;
         }
@@ -209,7 +215,10 @@ function generate_rss_feed() {
         $max_id = end($page)['id'];
         $page_count++;
         debug("Fetched bookmarks page $page_count, total bookmarks: " . count($bookmarks));
-        if (count($page) < 40) {
+        if (count($page) < $items_per_page) {
+            break;
+        }
+        if ($page_count * $items_per_page > $feed_item_limit) {
             break;
         }
     }
