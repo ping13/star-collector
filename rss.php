@@ -18,13 +18,14 @@ $config_file = 'mastodon_config.php';
 // Funktion zum Einlesen der Konfiguration
 function load_config($config_file) {
     debug("Loading configuration from $config_file");
-  if (!file_exists($config_file)) {
+    if (!file_exists($config_file)) {
         debug("Configuration file not found");
         die("Konfigurationsdatei nicht gefunden. Bitte erstellen Sie eine Datei namens '$config_file' mit dem Inhalt: 
 <?php
 \$access_token = 'IHR_ACCESS_TOKEN';
 \$mastodon_instance = 'https://ihre_instanz.social';
 \$mastodon_username = 'ihr_benutzername';
+\$feed_item_limit = 5;
 ?>");
     }
     require $config_file;
@@ -40,11 +41,16 @@ function load_config($config_file) {
         debug("Mastodon username not found or empty");
         die("Mastodon-Benutzername nicht gefunden oder leer in der Konfigurationsdatei.");
     }
+    if (!isset($feed_item_limit) || !is_numeric($feed_item_limit) || $feed_item_limit <= 0) {
+        debug("Feed item limit not found or invalid, setting default to 5");
+        $feed_item_limit = 5;
+    }
     debug("Configuration loaded successfully");
     return array(
         'access_token' => $access_token, 
         'mastodon_instance' => $mastodon_instance,
-        'mastodon_username' => $mastodon_username
+        'mastodon_username' => $mastodon_username,
+        'feed_item_limit' => $feed_item_limit
     );
 }
 
@@ -53,9 +59,11 @@ $config = load_config($config_file);
 $access_token = $config['access_token'];
 $mastodon_instance = $config['mastodon_instance'];
 $mastodon_username = $config['mastodon_username'];
+$feed_item_limit = $config['feed_item_limit'];
 
 debug("Mastodon instance: $mastodon_instance");
 debug("Mastodon username: $mastodon_username");
+debug("Feed item limit: $feed_item_limit");
 
 // Funktion zum Abrufen von Daten von der Mastodon API
 function fetch_mastodon_data($endpoint) {
@@ -137,8 +145,8 @@ function create_rss_item($status) {
 
 // Hauptfunktion zum Erstellen des RSS-Feeds
 function generate_rss_feed() {
-    global $mastodon_username;
-    debug("Starting RSS feed generation for user: $mastodon_username");
+    global $mastodon_username, $feed_item_limit;
+    debug("Starting RSS feed generation for user: $mastodon_username with limit: $feed_item_limit");
     $favorites = fetch_mastodon_data("/api/v1/favourites");
     if ($favorites === null) {
         debug("Failed to fetch favorites");
@@ -164,6 +172,10 @@ function generate_rss_feed() {
     usort($unique_statuses, function($a, $b) {
         return strtotime($b['created_at']) - strtotime($a['created_at']);
     });
+
+    // Limit the number of items
+    $unique_statuses = array_slice($unique_statuses, 0, $feed_item_limit);
+    debug("Limited unique statuses", ['count' => count($unique_statuses)]);
 
     // RSS-Feed erstellen
     debug("Creating RSS feed XML");
