@@ -70,9 +70,12 @@ debug("Mastodon username: $mastodon_username");
 debug("Feed item limit: $feed_item_limit");
 
 // Funktion zum Abrufen von Daten von der Mastodon API
-function fetch_mastodon_data($endpoint) {
+function fetch_mastodon_data($endpoint, $params = array()) {
     global $mastodon_instance, $access_token;
     $url = $mastodon_instance . $endpoint;
+    if (!empty($params)) {
+        $url .= '?' . http_build_query($params);
+    }
     debug("Fetching data from: $url");
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -156,16 +159,44 @@ function create_rss_item($status) {
 function generate_rss_feed() {
     global $mastodon_username, $feed_item_limit, $mastodon_instance;
     debug("Starting RSS feed generation for user: $mastodon_username with limit: $feed_item_limit");
-    $favorites = fetch_mastodon_data("/api/v1/favourites");
-    if ($favorites === null) {
-        debug("Failed to fetch favorites");
-        return null;
+    
+    $favorites = [];
+    $max_id = null;
+    while (count($favorites) < $feed_item_limit) {
+        $params = ['limit' => 40];
+        if ($max_id) {
+            $params['max_id'] = $max_id;
+        }
+        $page = fetch_mastodon_data("/api/v1/favourites", $params);
+        if ($page === null || empty($page)) {
+            break;
+        }
+        $favorites = array_merge($favorites, $page);
+        $max_id = end($page)['id'];
+        if (count($page) < 40) {
+            break;
+        }
     }
-    $bookmarks = fetch_mastodon_data("/api/v1/bookmarks");
-    if ($bookmarks === null) {
-        debug("Failed to fetch bookmarks");
-        return null;
+    debug("Total favorites fetched", ['count' => count($favorites)]);
+
+    $bookmarks = [];
+    $max_id = null;
+    while (count($bookmarks) < $feed_item_limit) {
+        $params = ['limit' => 40];
+        if ($max_id) {
+            $params['max_id'] = $max_id;
+        }
+        $page = fetch_mastodon_data("/api/v1/bookmarks", $params);
+        if ($page === null || empty($page)) {
+            break;
+        }
+        $bookmarks = array_merge($bookmarks, $page);
+        $max_id = end($page)['id'];
+        if (count($page) < 40) {
+            break;
+        }
     }
+    debug("Total bookmarks fetched", ['count' => count($bookmarks)]);
 
     $all_statuses = array_merge($favorites, $bookmarks);
     debug("Total statuses fetched", ['count' => count($all_statuses)]);
