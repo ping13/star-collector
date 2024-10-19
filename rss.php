@@ -105,28 +105,28 @@ function create_rss_item($status) {
     $item->addChild('pubDate', date(DATE_RSS, strtotime($status['created_at'])));
     
     // Erstellen einer detaillierten Beschreibung mit eingebetteten Medien
-    $description = $status['content'];
+    $description = htmlspecialchars($status['content']);
     if (!empty($status['media_attachments'])) {
         $description .= "\n\n<h3>Anhänge:</h3>\n";
         foreach ($status['media_attachments'] as $media) {
             switch ($media['type']) {
                 case 'image':
-                    $description .= "<p><img src='{$media['url']}' alt='{$media['description']}' style='max-width:100%;'/></p>\n";
+                    $description .= "<p><img src='" . htmlspecialchars($media['url']) . "' alt='" . htmlspecialchars($media['description']) . "' style='max-width:100%;'/></p>\n";
                     break;
                 case 'video':
-                    $description .= "<p><video src='{$media['url']}' controls style='max-width:100%;'>Ihr Browser unterstützt das Video-Tag nicht.</video></p>\n";
+                    $description .= "<p><video src='" . htmlspecialchars($media['url']) . "' controls style='max-width:100%;'>Ihr Browser unterstützt das Video-Tag nicht.</video></p>\n";
                     break;
                 case 'gifv':
-                    $description .= "<p><img src='{$media['url']}' alt='{$media['description']}' style='max-width:100%;'/></p>\n";
+                    $description .= "<p><img src='" . htmlspecialchars($media['url']) . "' alt='" . htmlspecialchars($media['description']) . "' style='max-width:100%;'/></p>\n";
                     break;
                 default:
-                    $description .= "<p>Anhang: <a href='{$media['url']}'>{$media['type']}</a></p>\n";
+                    $description .= "<p>Anhang: <a href='" . htmlspecialchars($media['url']) . "'>" . htmlspecialchars($media['type']) . "</a></p>\n";
             }
         }
     }
     
-    $description_node = $item->addChild('description');
-    $description_node->{0} = '<![CDATA[' . htmlspecialchars($description) . ']]>';
+    $cdata = $item->addChild('description');
+    $cdata->addCData($description);
     
     // Anhänge als separate Elemente hinzufügen
     foreach ($status['media_attachments'] as $media) {
@@ -187,15 +187,9 @@ function generate_rss_feed() {
 
     foreach ($unique_statuses as $status) {
         $item = create_rss_item($status);
-        // Convert SimpleXMLElement to string and then parse it back to append to the channel
-        $item_xml = $item->asXML();
-        $parsed_item = new SimpleXMLElement($item_xml);
-        foreach ($parsed_item->children() as $child) {
-            $new_child = $channel->addChild($child->getName(), (string)$child);
-            foreach ($child->attributes() as $attr_key => $attr_value) {
-                $new_child->addAttribute($attr_key, (string)$attr_value);
-            }
-        }
+        $dom = dom_import_simplexml($channel);
+        $item_dom = dom_import_simplexml($item);
+        $dom->appendChild($dom->ownerDocument->importNode($item_dom, true));
     }
 
     debug("RSS feed generation complete");
