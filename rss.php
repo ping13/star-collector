@@ -105,11 +105,12 @@ function create_rss_item($status) {
     $item = new SimpleXMLElement('<item></item>');
     $item->addChild('title', htmlspecialchars('@' . $status['account']['username'] . ': ' . mb_substr(strip_tags($status['content']), 0, 100) . '...'));
     $item->addChild('link', $status['url']);
-    $item->addChild('guid', $status['id']);
+    $guid = $item->addChild('guid', $status['id']);
+    $guid->addAttribute('isPermaLink', 'false');
     $item->addChild('pubDate', date(DATE_RSS, strtotime($status['created_at'])));
     
     // Erstellen einer detaillierten Beschreibung mit eingebetteten Medien
-    $description = htmlspecialchars($status['content']);
+    $description = "<![CDATA[" . $status['content'];
     if (!empty($status['media_attachments'])) {
         $description .= "\n\n<h3>Anhänge:</h3>\n";
         foreach ($status['media_attachments'] as $media) {
@@ -128,9 +129,10 @@ function create_rss_item($status) {
             }
         }
     }
+    $description .= "]]>";
     
     $descriptionNode = $item->addChild('description');
-    $descriptionNode[0] = '<![CDATA[' . $description . ']]>';
+    $descriptionNode[0] = $description;
     
     // Anhänge als separate Elemente hinzufügen
     foreach ($status['media_attachments'] as $media) {
@@ -140,6 +142,9 @@ function create_rss_item($status) {
         // Fügen Sie die Größe hinzu, wenn verfügbar
         if (isset($media['meta']['original']['size'])) {
             $enclosure->addAttribute('length', $media['meta']['original']['size']);
+        } else {
+            // If size is not available, use a placeholder value
+            $enclosure->addAttribute('length', '0');
         }
     }
     
@@ -183,11 +188,17 @@ function generate_rss_feed() {
 
     // RSS-Feed erstellen
     debug("Creating RSS feed XML");
-    $rss = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"></rss>');
+    $rss = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/"></rss>');
     $channel = $rss->addChild('channel');
     $channel->addChild('title', "Mastodon Favoriten und Lesezeichen von @$mastodon_username");
     $channel->addChild('link', "$mastodon_instance/@$mastodon_username");
     $channel->addChild('description', "Ein Feed der Mastodon Favoriten und Lesezeichen von @$mastodon_username");
+    
+    // Add atom:link element
+    $atomLink = $channel->addChild('atom:link', null, 'http://www.w3.org/2005/Atom');
+    $atomLink->addAttribute('href', "http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]");
+    $atomLink->addAttribute('rel', 'self');
+    $atomLink->addAttribute('type', 'application/rss+xml');
 
     foreach ($unique_statuses as $status) {
         $item = create_rss_item($status);
