@@ -111,6 +111,8 @@ function create_rss_item($status) {
     
     // Erstellen einer detaillierten Beschreibung mit eingebetteten Medien
     $description = $status['content'];
+    $description .= "\n\n<p><a href='" . htmlspecialchars($status['url'], ENT_QUOTES, 'UTF-8') . "'>Link to original toot</a></p>";
+    
     if (!empty($status['media_attachments'])) {
         $description .= "\n\n<h3>Anhänge:</h3>\n";
         foreach ($status['media_attachments'] as $media) {
@@ -129,6 +131,9 @@ function create_rss_item($status) {
             }
         }
     }
+    
+    // Properly escape CDATA end marker
+    $description = str_replace(']]>', ']]]]><![CDATA[>', $description);
     
     $descriptionNode = $item->addChild('description');
     $descriptionNode[0] = '<![CDATA[' . $description . ']]>';
