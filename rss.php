@@ -125,8 +125,8 @@ function create_rss_item($status) {
         }
     }
     
-    $cdata = $item->addChild('description');
-    $cdata->addCData($description);
+    $descriptionNode = $item->addChild('description');
+    $descriptionNode[0] = '<![CDATA[' . $description . ']]>';
     
     // Anhänge als separate Elemente hinzufügen
     foreach ($status['media_attachments'] as $media) {
