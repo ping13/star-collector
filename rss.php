@@ -8,11 +8,11 @@ error_reporting(E_ALL);
 // Debug function
 function debug($message, $data = null) {
     if (error_reporting() !== 0) {
-        echo "DEBUG: $message\n";
+        fwrite(STDERR, "DEBUG: $message\n");
         if ($data !== null) {
-            echo "Data: " . print_r($data, true) . "\n";
+            fwrite(STDERR, "Data: " . print_r($data, true) . "\n");
         }
-        echo "\n";
+        fwrite(STDERR, "\n");
     }
 }
 
