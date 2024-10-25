@@ -260,9 +260,90 @@ function generate_rss_feed() {
     return $rss->asXML();
 }
 
-// RSS-Feed generieren und ausgeben
+// Funktion zum Generieren eines Atom-Feeds
+function generate_atom_feed() {
+    global $mastodon_username, $feed_item_limit, $mastodon_instance;
+    debug("Starting Atom feed generation for user: $mastodon_username with limit: $feed_item_limit");
+    
+    // Get the feed items using the existing RSS feed generation logic
+    $unique_statuses = get_feed_items();
+    
+    // Create Atom feed
+    $feed = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>');
+    
+    // Add feed metadata
+    $feed->addChild('title', "Mastodon Favoriten und Lesezeichen von @$mastodon_username");
+    $feed->addChild('subtitle', "Ein Feed der Mastodon Favoriten und Lesezeichen von @$mastodon_username");
+    
+    $link = $feed->addChild('link');
+    $link->addAttribute('href', "$mastodon_instance/@$mastodon_username");
+    $link->addAttribute('rel', 'alternate');
+    
+    // Add self link
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+    $full_url = $protocol . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    $self_link = $feed->addChild('link');
+    $self_link->addAttribute('href', $full_url);
+    $self_link->addAttribute('rel', 'self');
+    
+    $feed->addChild('id', $full_url);
+    $feed->addChild('updated', date('c'));
+    
+    $author = $feed->addChild('author');
+    $author->addChild('name', "@$mastodon_username");
+    $author->addChild('uri', "$mastodon_instance/@$mastodon_username");
+    
+    foreach ($unique_statuses as $status) {
+        $entry = $feed->addChild('entry');
+        $entry->addChild('id', $status['id']);
+        $entry->addChild('title', htmlspecialchars('@' . $status['account']['username'] . ': ' . mb_substr(strip_tags($status['content']), 0, 100) . '...'));
+        
+        $link = $entry->addChild('link');
+        $link->addAttribute('href', $status['url']);
+        $link->addAttribute('rel', 'alternate');
+        
+        $entry->addChild('published', date('c', strtotime($status['created_at'])));
+        $entry->addChild('updated', date('c', strtotime($status['created_at'])));
+        
+        // Create content with media
+        $content = $entry->addChild('content');
+        $content->addAttribute('type', 'html');
+        
+        $content_text = htmlspecialchars($status['content'], ENT_QUOTES, 'UTF-8');
+        $content_text .= "\n\n<p><a href='" . htmlspecialchars($status['url'], ENT_QUOTES, 'UTF-8') . "'>Link to original toot</a></p>";
+        
+        if (!empty($status['media_attachments'])) {
+            $content_text .= "\n\n<h3>Anhänge:</h3>\n";
+            foreach ($status['media_attachments'] as $media) {
+                switch ($media['type']) {
+                    case 'image':
+                        $content_text .= "<p><img src='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "' alt='" . htmlspecialchars($media['description'], ENT_QUOTES, 'UTF-8') . "' style='max-width:100%;'/></p>\n";
+                        break;
+                    case 'video':
+                        $content_text .= "<p><video src='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "' controls style='max-width:100%;'>Ihr Browser unterstützt das Video-Tag nicht.</video></p>\n";
+                        break;
+                    case 'gifv':
+                        $content_text .= "<p><img src='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "' alt='" . htmlspecialchars($media['description'], ENT_QUOTES, 'UTF-8') . "' style='max-width:100%;'/></p>\n";
+                        break;
+                    default:
+                        $content_text .= "<p>Anhang: <a href='" . htmlspecialchars($media['url'], ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($media['type'], ENT_QUOTES, 'UTF-8') . "</a></p>\n";
+                }
+            }
+        }
+        $content[0] = $content_text;
+    }
+    
+    debug("Atom feed generation complete");
+    return $feed->asXML();
+}
+
+// Feed-Typ aus der URL auslesen
+$feed_type = isset($_GET['type']) ? $_GET['type'] : 'rss';
+debug("Requested feed type: $feed_type");
+
+// Feed generieren und ausgeben
 debug("Script execution started");
-$feed_content = generate_rss_feed();
+$feed_content = ($feed_type === 'atom') ? generate_atom_feed() : generate_rss_feed();
 
 if ($feed_content === null) {
     debug("Feed generation failed");
@@ -272,7 +353,7 @@ if ($feed_content === null) {
     die("Der generierte Feed ist leer. Möglicherweise gibt es keine Favoriten oder Lesezeichen.");
 } else {
     debug("Outputting feed content");
-    header('Content-Type: application/rss+xml; charset=utf-8');
+    header('Content-Type: ' . ($feed_type === 'atom' ? 'application/atom+xml' : 'application/rss+xml') . '; charset=utf-8');
     echo $feed_content;
 }
 
