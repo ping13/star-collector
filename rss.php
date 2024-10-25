@@ -1,20 +1,3 @@
-<?php
-ini_set('display_errors', 'stderr');
-// For production (no debug output):
-error_reporting(0);
-
-// For debugging (uncomment the next line):
-// error_reporting(E_ALL);
-
-// Debug function
-function debug($message, $data = null) {
-    if (error_reporting() !== 0) {
-        fwrite(STDERR, "DEBUG: $message\n");
-        if ($data !== null) {
-            fwrite(STDERR, "Data: " . print_r($data, true));
-        }
-    }
-}
 
 // Konfiguration
 $config_file = 'mastodon_config.php';
