@@ -1,13 +1,6 @@
 {
-    // Your Mastodon access token - get this from your instance's settings
     "access_token": "YOUR_ACCESS_TOKEN",
-    
-    // Your Mastodon instance URL (including https://)
     "mastodon_instance": "https://your.instance.social",
-    
-    // Your username on the instance (without the @)
     "mastodon_username": "your_username",
-    
-    // Maximum number of items to include in the feed
     "feed_item_limit": 5
 }
