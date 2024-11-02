@@ -1,5 +1,4 @@
 mastodon:
-  access_token: YOUR_ACCESS_TOKEN
-  mastodon_instance: https://your.instance.social
-  mastodon_username: your_username
+  mastodon_instance: https://swiss.social
+  mastodon_username: ping13
   feed_item_limit: 5
