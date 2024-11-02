@@ -35,8 +35,8 @@ jobs:
     - name: 📂 Copy RSS 
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        server: ${{ env.FTP_SERVER }}
-        username: ${{ env.FTP_USER }}
+        server: ${{ vars.FTP_SERVER }}
+        username: ${{ vars.FTP_USER }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./mastodon/
         server-dir: public_html/ping13.net/mastodon/
