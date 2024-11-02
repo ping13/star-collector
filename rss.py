@@ -42,24 +42,22 @@ class MastodonRSSGenerator:
         if 'mastodon' not in config:
             raise ValueError("Missing 'mastodon' section in config file")
             
-        mastodon_config = config['mastodon']
-        
         # Override access_token from environment if available
         if os.getenv('MASTODON_ACCESS_TOKEN'):
-            mastodon_config['access_token'] = os.getenv('MASTODON_ACCESS_TOKEN')
+            config['mastodon']['access_token'] = os.getenv('MASTODON_ACCESS_TOKEN')
         
         required_fields = ['access_token', 'mastodon_instance', 'mastodon_username']
         for field in required_fields:
-            if not mastodon_config.get(field):
+            if not config['mastodon'].get(field):
                 raise ValueError(f"Missing or empty {field} in mastodon config section")
                 
-        return mastodon_config
+        return config
 
     def _fetch_mastodon_data(self, url: str) -> Tuple[Optional[List], Optional[str]]:
         """Fetch data from Mastodon API"""
         logger.debug(f"Fetching data from: {url}")
         
-        headers = {'Authorization': f"Bearer {self.config['access_token']}"}
+        headers = {'Authorization': f"Bearer {self.config['mastodon']['access_token']}"}
         
         try:
             response = requests.get(url, headers=headers)
@@ -88,7 +86,9 @@ class MastodonRSSGenerator:
         if 'feedbin' not in self.config or not self.config['feedbin'].get('starfeed'):
             logger.debug("No Feedbin configuration found, skipping")
             return []
-            
+
+        logger.debug(f"Fetching Feedbin stars")
+
         try:
             feed = feedparser.parse(self.config['feedbin']['starfeed'])
             
@@ -106,6 +106,8 @@ class MastodonRSSGenerator:
                     'media_attachments': []
                 }
                 feedbin_items.append(item)
+
+            logger.debug(f"Found {len(feedbin_items)} Feedbin stars")
                 
             return feedbin_items[:self.feed_item_limit]
             
@@ -118,7 +120,9 @@ class MastodonRSSGenerator:
         if 'github' not in self.config or not self.config['github'].get('starfeed'):
             logger.debug("No GitHub configuration found, skipping")
             return []
-            
+
+        logger.debug(f"Fetching GitHub stars")
+                
         try:
             response = requests.get(self.config['github']['starfeed'])
             response.raise_for_status()
@@ -140,7 +144,9 @@ class MastodonRSSGenerator:
                     'media_attachments': []
                 }
                 github_items.append(item)
-                
+
+            logger.debug(f"Found {len(github_items)} GitHub stars")
+
             return github_items[:self.feed_item_limit]
             
         except Exception as e:
@@ -175,11 +181,13 @@ class MastodonRSSGenerator:
 
     def generate_feed(self) -> str:
         """Generate the RSS feed"""
+
+        # Mastodon
         mastodon_items_per_page = 40
-        
-        # Fetch favorites
+        mastodon_instance = self.config['mastodon']['mastodon_instance']
+        ## Fetch Mastodon favorites
         favorites = []
-        next_url = f"{self.config['mastodon_instance']}/api/v1/favourites?limit={mastodon_items_per_page}"
+        next_url = f"{mastodon_instance}/api/v1/favourites?limit={mastodon_items_per_page}"
         while len(favorites) < self.feed_item_limit:
             data, next_url = self._fetch_mastodon_data(next_url)
             if not data:
@@ -188,9 +196,9 @@ class MastodonRSSGenerator:
             if len(data) < mastodon_items_per_page or not next_url:
                 break
                 
-        # Fetch bookmarks
+        ## Fetch Mastodon bookmarks
         bookmarks = []
-        next_url = f"{self.config['mastodon_instance']}/api/v1/bookmarks?limit={mastodon_items_per_page}"
+        next_url = f"{mastodon_instance}/api/v1/bookmarks?limit={mastodon_items_per_page}"
         while len(bookmarks) < self.feed_item_limit:
             data, next_url = self._fetch_mastodon_data(next_url)
             if not data:
@@ -214,7 +222,7 @@ class MastodonRSSGenerator:
             reverse=True
         )
 
-        # Create feed
+        # Create feed from the items above
         fg = FeedGenerator()
         fg.title(f"Mastodon Favorites and Bookmarks by @{self.config['mastodon_username']}")
         fg.link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}")
