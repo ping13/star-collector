@@ -14,12 +14,12 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
+    "feedparser>=6.0.11"  
 ]
 
 [tool.uv]
 dev-dependencies = [
   "aider-chat",
-  "feedparser>=6.0.11",
 ]
 
 [tool.uv.sources]
