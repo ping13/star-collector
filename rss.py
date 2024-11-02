@@ -159,6 +159,7 @@ class MastodonRSSGenerator:
             if not data:
                 break
             bookmarks.extend(data)
+
             if len(data) < mastodon_items_per_page or not next_url:
                 break
 
