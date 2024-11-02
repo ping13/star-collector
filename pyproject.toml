@@ -9,8 +9,11 @@ requires-python = ">=3.10,<3.13"
 readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [
+    "click>=8.1.7",
     "feedgen>=1.0.0",
     "python-dotenv>=1.0.1",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.3",
 ]
 
 [tool.uv]
@@ -22,9 +25,3 @@ dev-dependencies = [
 [tool.uv.sources]
 aider-chat = { git = "https://github.com/paul-gauthier/aider.git", branch = "main" }
 
-[tool.poetry.dependencies]
-python = "^3.9"
-click = "^8.1.0"
-requests = "^2.31.0"
-feedgen = "^0.9.0"
-pyyaml = "^6.0.1"
