@@ -1,6 +1,7 @@
 import click
 import requests
 import logging
+import yaml
 from datetime import datetime
 from feedgen.feed import FeedGenerator
 import json
@@ -26,17 +27,21 @@ class MastodonRSSGenerator:
             raise FileNotFoundError(f"Configuration file {config_file} not found")
             
         with open(config_file) as f:
-            config = json.load(f)
+            config = yaml.safe_load(f)
+        
+        if 'mastodon' not in config:
+            raise ValueError("Missing 'mastodon' section in config file")
             
+        mastodon_config = config['mastodon']
         required_fields = ['access_token', 'mastodon_instance', 'mastodon_username']
         for field in required_fields:
-            if not config.get(field):
-                raise ValueError(f"Missing or empty {field} in config file")
+            if not mastodon_config.get(field):
+                raise ValueError(f"Missing or empty {field} in mastodon config section")
                 
-        if not config.get('feed_item_limit') or not isinstance(config['feed_item_limit'], int):
-            config['feed_item_limit'] = 5
+        if not mastodon_config.get('feed_item_limit') or not isinstance(mastodon_config['feed_item_limit'], int):
+            mastodon_config['feed_item_limit'] = 5
             
-        return config
+        return mastodon_config
 
     def _fetch_mastodon_data(self, url: str) -> Tuple[Optional[List], Optional[str]]:
         """Fetch data from Mastodon API"""
