@@ -81,6 +81,20 @@ class MastodonRSSGenerator:
         clean = re.compile('<.*?>')
         return re.sub(clean, '', text)
 
+    def _ensure_iso_datetime(self, date_str: str) -> str:
+        """Convert various datetime strings to ISO format with UTC timezone"""
+        try:
+            # Parse the date string to datetime
+            if 'T' in date_str:  # Already ISO-like format
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            else:  # Try parsing other formats
+                dt = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %z')
+            # Return in ISO format with UTC timezone
+            return dt.isoformat()
+        except Exception as e:
+            logger.warning(f"Date parsing error: {e} for date: {date_str}")
+            return date_str
+
     def _fetch_feedbin_stars(self) -> List[Dict]:
         """Fetch starred items from Feedbin RSS feed"""
         if 'feedbin' not in self.config or not self.config['feedbin'].get('starfeed'):
@@ -99,7 +113,7 @@ class MastodonRSSGenerator:
                     'id': f"feedbin_{entry.get('id', '')}",
                     'content': entry.get('description', ''),
                     'url': entry.get('link', ''),
-                    'created_at': entry.get('published', ''),
+                    'created_at': self._ensure_iso_datetime(entry.get('published', '')),
                     'account': {
                         'username': 'Feedbin Star'
                     },
@@ -137,7 +151,7 @@ class MastodonRSSGenerator:
                     'id': f"github_{star['id']}",
                     'content': description,
                     'url': star['html_url'],
-                    'created_at': star['created_at'],
+                    'created_at': self._ensure_iso_datetime(star['created_at']),
                     'account': {
                         'username': f"GitHub: {star['owner']['login']}"
                     },
@@ -161,7 +175,7 @@ class MastodonRSSGenerator:
         title_text = clean_content.replace('&', '&#x26;').replace('<', '&#x3C;')
         entry.title(f"@{status['account']['username']}: {title_text}...")
         entry.link(href=status['url'])
-        entry.published(datetime.fromisoformat(status['created_at'].replace('Z', '+00:00')))
+        entry.published(datetime.fromisoformat(self._ensure_iso_datetime(status['created_at'])))
         
         # Create description with media
         description = status['content']
@@ -218,7 +232,7 @@ class MastodonRSSGenerator:
         all_items = {item['id']: item for item in favorites + bookmarks + feedbin_stars + github_stars}
         sorted_items = sorted(
             all_items.values(),
-            key=lambda x: datetime.fromisoformat(x['created_at'].replace('Z', '+00:00')),
+            key=lambda x: datetime.fromisoformat(self._ensure_iso_datetime(x['created_at'])),
             reverse=True
         )
 
