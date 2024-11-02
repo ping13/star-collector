@@ -1,59 +1,36 @@
-# RSS Feed for Personal Favorites and Bookmarks on Mastodon
+# Mastodon RSS Generator
 
-## Overview
+A Python script to generate RSS/Atom feeds from your Mastodon favorites and bookmarks.
 
-This Python-based tool generates an RSS feed of your favorites and bookmarks from Mastodon, 
-along with starred items from Feedbin. The script fetches your most recent interactions
-and combines them into a single RSS feed. You can see an example feed for 
-[`ping13@swiss.social`](https://swiss.social/@ping13).
+## Installation
 
-## Setup
+1. Clone this repository
+2. Install dependencies using your preferred Python package manager:
+   ```bash
+   pip install .
+   ```
 
-1. Copy `config.sample.yaml` to `config.yaml`
-2. Edit `config.yaml` with your Mastodon instance and username
-3. Set your Mastodon access token in the `MASTODON_ACCESS_TOKEN` environment variable
-4. Optional: Configure Feedbin starred items feed URL
+## Configuration
+
+1. Copy `mastodon_config.json.example` to `mastodon_config.json`
+2. Edit `mastodon_config.json` with your:
+   - Mastodon access token
+   - Instance URL
+   - Username
+   - Desired feed item limit
 
 ## Usage
 
+Generate RSS feed:
 ```bash
-# Basic usage (uses config.yaml by default)
-python rss.py
-
-# Specify a different config file
-python rss.py --config my_config.yaml
-
-# Output to a file instead of stdout
-python rss.py --output feed.xml
-
-# Set number of items in feed
-python rss.py --limit 10
-
-# Enable debug output
-python rss.py --debug
+python rss.py --config mastodon_config.json
 ```
 
-## Using Large Language Models for Coding
+Options:
+- `--config/-c`: Path to config file (default: mastodon_config.json)
+- `--debug`: Enable debug output
+- `--output/-o`: Output file (default: stdout)
 
-The code was developed using [aider](https://aider.chat), which proved to be a pleasant experience. 
+## License
 
-To set things up, I prefer utilizing [uv](https://astral.sh/uv) to use the latest
-`aider-chat` release with all necessary dependencies. This can be achieved by
-executing the following commands:
-
-```bash
-$ uv sync                     # uses pyproject.toml
-$ uv run aider --architect
-```
-
-The `--architect` option was [recently
-introduced](https://aider.chat/2024/09/26/architect.html), enabling pre-edit
-reasoning for code. However, it is relatively costly, as it employs models from
-both Anthropic and OpenAI.
-
-### Dev Notes
-
-
-- How to run act with Rancher:
-
-`export DOCKER_HOST=$(docker context inspect --format '{{.Endpoints.docker.Host}}')`
+This project is licensed under the MIT License - see the LICENSE file for details.
