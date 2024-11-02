@@ -8,6 +8,10 @@ authors = [
 requires-python = ">=3.10,<3.13"
 readme = "README.md"
 license = {file = "LICENSE"}
+dependencies = [
+    "feedgen>=1.0.0",
+    "python-dotenv>=1.0.1",
+]
 
 [tool.uv]
 dev-dependencies = [
