@@ -8,6 +8,7 @@ import json
 import os
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -23,6 +24,9 @@ class MastodonRSSGenerator:
         """Load configuration from file"""
         logger.debug(f"Loading configuration from {config_file}")
         
+        # Load environment variables
+        load_dotenv()
+        
         if not os.path.exists(config_file):
             raise FileNotFoundError(f"Configuration file {config_file} not found")
             
@@ -33,6 +37,11 @@ class MastodonRSSGenerator:
             raise ValueError("Missing 'mastodon' section in config file")
             
         mastodon_config = config['mastodon']
+        
+        # Override access_token from environment if available
+        if os.getenv('MASTODON_ACCESS_TOKEN'):
+            mastodon_config['access_token'] = os.getenv('MASTODON_ACCESS_TOKEN')
+        
         required_fields = ['access_token', 'mastodon_instance', 'mastodon_username']
         for field in required_fields:
             if not mastodon_config.get(field):
