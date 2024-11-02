@@ -1,0 +1,8 @@
+mastodon:
+  mastodon_instance: https://mastodon.example.com
+  mastodon_username: username
+  feed_item_limit: 5
+feedbin:
+  starfeed: https://feedbin.com/starred/your-feedbin-token.xml
+github:
+  starfeed: https://api.github.com/users/your-github-username/starred

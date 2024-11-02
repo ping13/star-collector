@@ -39,3 +39,4 @@ ENV/
 .vscode/
 *.swp
 *.swo
+config.yaml
