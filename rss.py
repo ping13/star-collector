@@ -188,7 +188,7 @@ class MastodonRSSGenerator:
         return fg.rss_str(pretty=True)
 
 @click.command()
-@click.option('--config', '-c', default='mastodon_config.yaml', help='Path to configuration file')
+@click.option('--config', '-c', default='config.yaml', help='Path to configuration file')
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
 @click.option('--limit', '-l', default=5, help='Number of feed items to include', type=int)

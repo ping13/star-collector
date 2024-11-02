@@ -2,10 +2,36 @@
 
 ## Overview
 
-The `rss.php` script is a straightforward PHP tool designed to display my most
-recent favorite and bookmarked toots on Mastodon. You can copy this script
-along with the configuration file to your own hosting provider. As an example,
-access the [RSS feed](http://ping13.net/mastodon/rss.php) for [`ping13@swiss.social`](https://swiss.social/@ping13).
+This Python-based tool generates an RSS feed of your favorites and bookmarks from Mastodon, 
+along with starred items from Feedbin. The script fetches your most recent interactions
+and combines them into a single RSS feed. You can see an example feed for 
+[`ping13@swiss.social`](https://swiss.social/@ping13).
+
+## Setup
+
+1. Copy `config.sample.yaml` to `config.yaml`
+2. Edit `config.yaml` with your Mastodon instance and username
+3. Set your Mastodon access token in the `MASTODON_ACCESS_TOKEN` environment variable
+4. Optional: Configure Feedbin starred items feed URL
+
+## Usage
+
+```bash
+# Basic usage (uses config.yaml by default)
+python rss.py
+
+# Specify a different config file
+python rss.py --config my_config.yaml
+
+# Output to a file instead of stdout
+python rss.py --output feed.xml
+
+# Set number of items in feed
+python rss.py --limit 10
+
+# Enable debug output
+python rss.py --debug
+```
 
 ## Using Large Language Models for Coding
 
