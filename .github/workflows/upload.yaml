@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: default
     steps:
+    - name: Enable Debug Logging
+      run: echo "ACTIONS_RUNNER_DEBUG=true" >> $GITHUB_ENV
+      
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
 
@@ -26,6 +29,8 @@ jobs:
 
     - name: Build RSS file
       run: mkdir mastodon && uv run --no-dev rss.py --limit 200 > mastodon/stars.rss
+      env:
+        MASTODON_ACCESS_KEY: ${{ secrets.MASTODON_ACCESS_KEY }}
         
     - name: 📂 Copy RSS 
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
