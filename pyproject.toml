@@ -1,7 +1,7 @@
 [project]
 name = "mastodon-rss"
 version = "0.1.0"
-description = "My Favs and Bookarks"
+description = "My Favs and Bookmarks"
 authors = [
     {name = "Stephan Heuel", email = "mail@ping13.net"}
 ]
@@ -11,12 +11,12 @@ license = {file = "LICENSE"}
 dependencies = [
     "feedgen>=1.0.0",
     "python-dotenv>=1.0.1",
-    "python-dotenv>=1.0.0",
 ]
 
 [tool.uv]
 dev-dependencies = [
-  "aider-chat"
+  "aider-chat",
+  "feedparser>=6.0.11",
 ]
 
 [tool.uv.sources]

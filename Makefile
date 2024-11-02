@@ -11,8 +11,11 @@ help:		## output help for all targets
 
 all: help
 
+test:		## test the generation of feeds and see if it is a valid feed
+	uv run python rss.py --limit 200 | uv run python validate_feed.py
+
 aider:		## Start a chat with an LLM to change your code
-	uv run aider-chat --architect
+	uv run aider --architect
 
 
 
