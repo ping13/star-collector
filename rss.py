@@ -110,6 +110,40 @@ class MastodonRSSGenerator:
             logger.error(f"Error fetching Feedbin stars: {e}")
             return []
 
+    def _fetch_github_stars(self) -> List[Dict]:
+        """Fetch starred repositories from GitHub"""
+        if 'github' not in self.config or not self.config['github'].get('starfeed'):
+            logger.debug("No GitHub configuration found, skipping")
+            return []
+            
+        try:
+            response = requests.get(self.config['github']['starfeed'])
+            response.raise_for_status()
+            stars = response.json()
+            
+            github_items = []
+            for star in stars:
+                # Convert GitHub star to a format similar to Mastodon items
+                description = f"{star['description'] or ''}\n\nLanguage: {star['language'] or 'Not specified'}\n⭐ {star['stargazers_count']}"
+                
+                item = {
+                    'id': f"github_{star['id']}",
+                    'content': description,
+                    'url': star['html_url'],
+                    'created_at': star['created_at'],
+                    'account': {
+                        'username': f"GitHub: {star['owner']['login']}"
+                    },
+                    'media_attachments': []
+                }
+                github_items.append(item)
+                
+            return github_items[:self.feed_item_limit]
+            
+        except Exception as e:
+            logger.error(f"Error fetching GitHub stars: {e}")
+            return []
+
     def _create_feed_item(self, feed: FeedGenerator, status: Dict):
         """Create an RSS feed item from a status"""
         entry = feed.add_entry()
@@ -166,11 +200,11 @@ class MastodonRSSGenerator:
         # Fetch stars from Feedbin
         feedbin_stars = self._fetch_feedbin_stars()
 
-        # TODO: Fetch stars on GitHub
-        ...
+        # Fetch stars from GitHub
+        github_stars = self._fetch_github_stars()
 
         # Combine and sort items
-        all_items = {item['id']: item for item in favorites + bookmarks + feedbin_stars}
+        all_items = {item['id']: item for item in favorites + bookmarks + feedbin_stars + github_stars}
         sorted_items = sorted(
             all_items.values(),
             key=lambda x: datetime.fromisoformat(x['created_at'].replace('Z', '+00:00')),
