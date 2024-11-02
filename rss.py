@@ -3,6 +3,7 @@ import requests
 import logging
 import yaml
 import re
+import feedparser
 from datetime import datetime
 from feedgen.feed import FeedGenerator
 import json
@@ -79,6 +80,36 @@ class MastodonRSSGenerator:
         clean = re.compile('<.*?>')
         return re.sub(clean, '', text)
 
+    def _fetch_feedbin_stars(self) -> List[Dict]:
+        """Fetch starred items from Feedbin RSS feed"""
+        if 'feedbin' not in self.config or not self.config['feedbin'].get('starfeed'):
+            logger.debug("No Feedbin configuration found, skipping")
+            return []
+            
+        try:
+            feed = feedparser.parse(self.config['feedbin']['starfeed'])
+            
+            feedbin_items = []
+            for entry in feed.entries:
+                # Convert Feedbin entry to a format similar to Mastodon items
+                item = {
+                    'id': f"feedbin_{entry.get('id', '')}",
+                    'content': entry.get('description', ''),
+                    'url': entry.get('link', ''),
+                    'created_at': entry.get('published', ''),
+                    'account': {
+                        'username': 'Feedbin Star'
+                    },
+                    'media_attachments': []
+                }
+                feedbin_items.append(item)
+                
+            return feedbin_items[:self.feed_item_limit]
+            
+        except Exception as e:
+            logger.error(f"Error fetching Feedbin stars: {e}")
+            return []
+
     def _create_feed_item(self, feed: FeedGenerator, status: Dict):
         """Create an RSS feed item from a status"""
         entry = feed.add_entry()
@@ -131,14 +162,14 @@ class MastodonRSSGenerator:
             if len(data) < mastodon_items_per_page or not next_url:
                 break
 
-        # TODO: Fetch stars on feedbin
-        ...
+        # Fetch stars from Feedbin
+        feedbin_stars = self._fetch_feedbin_stars()
 
         # TODO: Fetch stars on GitHub
         ...
 
         # Combine and sort items
-        all_items = {item['id']: item for item in favorites + bookmarks}
+        all_items = {item['id']: item for item in favorites + bookmarks + feedbin_stars}
         sorted_items = sorted(
             all_items.values(),
             key=lambda x: datetime.fromisoformat(x['created_at'].replace('Z', '+00:00')),
