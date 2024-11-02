@@ -145,7 +145,7 @@ class MastodonRSSGenerator:
         fg = FeedGenerator()
         fg.title(f"Mastodon Favorites and Bookmarks by @{self.config['mastodon_username']}")
         fg.link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}")
-        fg.atom_link_href(f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}/feed.rss")
+        fg.atom_link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}/feed.rss")
         fg.description(f"A feed of Mastodon favorites and bookmarks by @{self.config['mastodon_username']}")
         
         for item in sorted_items[:self.config['feed_item_limit']]:
