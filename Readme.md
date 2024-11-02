@@ -35,3 +35,10 @@ I proceeded to debug the script on the command line and realized that the
 `max_id` parameter does not correspond to the toot's `id`. Instead, it is an
 "internal parameter," and it is necessary to parse the `Link` header from the
 API response to determine the URL for the next page.
+
+### Dev Notes
+
+
+- How to run act with Rancher:
+
+`export DOCKER_HOST=$(docker context inspect --format '{{.Endpoints.docker.Host}}')`
