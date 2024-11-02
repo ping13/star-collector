@@ -107,29 +107,35 @@ class MastodonRSSGenerator:
 
     def generate_feed(self) -> str:
         """Generate the RSS feed"""
-        items_per_page = 40
-        favorites = []
-        bookmarks = []
+        mastodon_items_per_page = 40
         
         # Fetch favorites
-        next_url = f"{self.config['mastodon_instance']}/api/v1/favourites?limit={items_per_page}"
+        favorites = []
+        next_url = f"{self.config['mastodon_instance']}/api/v1/favourites?limit={mastodon_items_per_page}"
         while len(favorites) < self.feed_item_limit:
             data, next_url = self._fetch_mastodon_data(next_url)
             if not data:
                 break
             favorites.extend(data)
-            if len(data) < items_per_page or not next_url:
+            if len(data) < mastodon_items_per_page or not next_url:
                 break
                 
         # Fetch bookmarks
-        next_url = f"{self.config['mastodon_instance']}/api/v1/bookmarks?limit={items_per_page}"
+        bookmarks = []
+        next_url = f"{self.config['mastodon_instance']}/api/v1/bookmarks?limit={mastodon_items_per_page}"
         while len(bookmarks) < self.feed_item_limit:
             data, next_url = self._fetch_mastodon_data(next_url)
             if not data:
                 break
             bookmarks.extend(data)
-            if len(data) < items_per_page or not next_url:
+            if len(data) < mastodon_items_per_page or not next_url:
                 break
+
+        # TODO: Fetch stars on feedbin
+        ...
+
+        # TODO: Fetch stars on GitHub
+        ...
 
         # Combine and sort items
         all_items = {item['id']: item for item in favorites + bookmarks}
