@@ -2,6 +2,7 @@
 .aider*
 .env
 .vars
+
 # Config files
 
 # Python
@@ -38,4 +39,3 @@ ENV/
 .vscode/
 *.swp
 *.swo
-config.yaml
