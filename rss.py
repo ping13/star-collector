@@ -136,7 +136,7 @@ class MastodonRSSGenerator:
         return fg.rss_str(pretty=True)
 
 @click.command()
-@click.option('--config', '-c', default='mastodon_config.json', help='Path to configuration file')
+@click.option('--config', '-c', default='mastodon_config.yaml', help='Path to configuration file')
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
 def main(config: str, debug: bool, output: Optional[str]):
