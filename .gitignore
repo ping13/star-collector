@@ -1,9 +1,7 @@
-mastodon_config.php
 *~
 .aider*
 .env
 # Config files
-mastodon_config.json
 
 # Python
 __pycache__/
