@@ -16,8 +16,9 @@ logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 class MastodonRSSGenerator:
-    def __init__(self, config_file: str, debug: bool = False):
+    def __init__(self, config_file: str, feed_item_limit: int = 5, debug: bool = False):
         self.config = self._load_config(config_file)
+        self.feed_item_limit = feed_item_limit
         if debug:
             logger.setLevel(logging.DEBUG)
         
@@ -48,9 +49,6 @@ class MastodonRSSGenerator:
             if not mastodon_config.get(field):
                 raise ValueError(f"Missing or empty {field} in mastodon config section")
                 
-        if not mastodon_config.get('feed_item_limit') or not isinstance(mastodon_config['feed_item_limit'], int):
-            mastodon_config['feed_item_limit'] = 5
-            
         return mastodon_config
 
     def _fetch_mastodon_data(self, url: str) -> Tuple[Optional[List], Optional[str]]:
@@ -115,7 +113,7 @@ class MastodonRSSGenerator:
         
         # Fetch favorites
         next_url = f"{self.config['mastodon_instance']}/api/v1/favourites?limit={items_per_page}"
-        while len(favorites) < self.config['feed_item_limit']:
+        while len(favorites) < self.feed_item_limit:
             data, next_url = self._fetch_mastodon_data(next_url)
             if not data:
                 break
@@ -125,7 +123,7 @@ class MastodonRSSGenerator:
                 
         # Fetch bookmarks
         next_url = f"{self.config['mastodon_instance']}/api/v1/bookmarks?limit={items_per_page}"
-        while len(bookmarks) < self.config['feed_item_limit']:
+        while len(bookmarks) < self.feed_item_limit:
             data, next_url = self._fetch_mastodon_data(next_url)
             if not data:
                 break
@@ -147,7 +145,7 @@ class MastodonRSSGenerator:
         fg.link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}")
         fg.description(f"A feed of Mastodon favorites and bookmarks by @{self.config['mastodon_username']}")
         
-        for item in sorted_items[:self.config['feed_item_limit']]:
+        for item in sorted_items[:self.feed_item_limit]:
             self._create_feed_item(fg, item)
             
         return fg.rss_str(pretty=True)
@@ -156,10 +154,11 @@ class MastodonRSSGenerator:
 @click.option('--config', '-c', default='mastodon_config.yaml', help='Path to configuration file')
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
-def main(config: str, debug: bool, output: Optional[str]):
+@click.option('--limit', '-l', default=5, help='Number of feed items to include', type=int)
+def main(config: str, debug: bool, output: Optional[str], limit: int):
     """Generate RSS feed from Mastodon favorites and bookmarks"""
     try:
-        generator = MastodonRSSGenerator(config, debug)
+        generator = MastodonRSSGenerator(config, feed_item_limit=limit, debug=debug)
         feed_content = generator.generate_feed()
         
         if output:
