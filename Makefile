@@ -11,8 +11,8 @@ DOCKER_HOST=$(docker context inspect --format '{{.Endpoints.docker.Host}}')
 
 all: help
 
-act:		## Run Github Actions locally
-	act --secret-file .env
+act:		## Run Github Actions locally, https://github.com/nektos/act
+	act schedule --secret-file .env
 
 test:		## test the generation of feeds and see if it is a valid feed
 	uv run python rss.py --limit 200 | uv run python validate_feed.py

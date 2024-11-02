@@ -1,13 +1,14 @@
 on:
-  workflow_dispatch:
   schedule:
     - cron: '0 2 * * *'  # Runs at minute 0 of every hour      
+  workflow_dispatch:
 
-name: 🚀 Publish stars
+name: 🚀 Publish my stars
 jobs:
-  web-deploy:
+  rss-deploy:
     name: 🎉 Deploy RSS feed
     runs-on: ubuntu-latest
+    environment: default
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
