@@ -16,6 +16,13 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
+def is_iso_format(date_str):
+    try:
+        datetime.fromisoformat(date_str)
+        return True
+    except ValueError:
+        return False
+    
 class MastodonRSSGenerator:
     def __init__(self, config_file: str, feed_item_limit: int = 5, debug: bool = False, log_level: str = 'ERROR'):
         # Set log level first
@@ -85,10 +92,10 @@ class MastodonRSSGenerator:
         """Convert various datetime strings to ISO format with UTC timezone"""
         try:
             # Parse the date string to datetime
-            if 'T' in date_str:  # Already ISO-like format
+            if is_iso_format(date_str):  # Already ISO-like format
                 dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
             else:  # Try parsing other formats
-                dt = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %z')
+                dt = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %z")
             # Return in ISO format with UTC timezone
             return dt.isoformat()
         except Exception as e:
@@ -238,9 +245,10 @@ class MastodonRSSGenerator:
 
         # Create feed from the items above
         fg = FeedGenerator()
-        fg.title(f"Mastodon Favorites and Bookmarks by @{self.config['mastodon_username']}")
-        fg.link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}")
-        fg.description(f"A feed of Mastodon favorites and bookmarks by @{self.config['mastodon_username']}")
+        mastodon_config = self.config['mastodon']
+        fg.title(f"Star Collection for {mastodon_config['mastodon_username']}")
+        fg.link(href=f"{mastodon_config['mastodon_instance']}/@{mastodon_config['mastodon_username']}")
+        fg.description(f"A collection of stars by @{mastodon_config['mastodon_username']}")
         
         for item in sorted_items[:self.feed_item_limit]:
             self._create_feed_item(fg, item)
