@@ -1,18 +1,36 @@
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs at minute 0 of every hour
-name: 🚀 Deploy webpage
+    - cron: '0 2 * * *'  # Runs at minute 0 of every hour      
+
+name: 🚀 Publish stars
 jobs:
   web-deploy:
-    name: 🎉 Deploy
+    name: 🎉 Deploy RSS feed
     runs-on: ubuntu-latest
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
-    
-    - name: 📂 Sync files
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: "Set up Python"
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: "pyproject.toml"
+        
+    - name: Install the project
+      run: uv sync --no-dev
+
+    - name: Build RSS file
+      run: mkdir mastodon && uv run --no-dev rss.py --limit 200 > mastodon/stars.rss
+        
+    - name: 📂 Copy RSS 
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        server: ftp.samkirkland.com
-        username: myFtpUserName
-        password: ${{ secrets.ftp_password }}
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USER }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./mastodon/
+        server-dir: public_html/ping13.net/mastodon/
+
