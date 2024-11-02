@@ -2,6 +2,7 @@ import click
 import requests
 import logging
 import yaml
+import re
 from datetime import datetime
 from feedgen.feed import FeedGenerator
 import json
@@ -75,11 +76,18 @@ class MastodonRSSGenerator:
             logger.error(f"Error fetching data: {e}")
             return None, None
 
+    def _strip_html(self, text: str) -> str:
+        """Remove HTML tags from text"""
+        clean = re.compile('<.*?>')
+        return re.sub(clean, '', text)
+
     def _create_feed_item(self, feed: FeedGenerator, status: Dict):
         """Create an RSS feed item from a status"""
         entry = feed.add_entry()
         entry.id(status['id'])
-        entry.title(f"@{status['account']['username']}: {status['content'][:100]}...")
+        clean_content = self._strip_html(status['content'])[:100]
+        title_text = clean_content.replace('&', '&#x26;').replace('<', '&#x3C;')
+        entry.title(f"@{status['account']['username']}: {title_text}...")
         entry.link(href=status['url'])
         entry.published(datetime.fromisoformat(status['created_at'].replace('Z', '+00:00')))
         
@@ -91,9 +99,9 @@ class MastodonRSSGenerator:
             description += "\n\n<h3>Attachments:</h3>\n"
             for media in status['media_attachments']:
                 if media['type'] == 'image':
-                    description += f"<p><img src='{media['url']}' alt='{media.get('description', '')}' style='max-width:100%;'/></p>\n"
+                    description += f"<p><img src='{media['url']}' alt='{media.get('description', '')}' width='100%'/></p>\n"
                 elif media['type'] == 'video':
-                    description += f"<p><video src='{media['url']}' controls style='max-width:100%;'>Your browser doesn't support video tags.</video></p>\n"
+                    description += f"<p><video src='{media['url']}' controls width='100%'>Your browser doesn't support video tags.</video></p>\n"
                 else:
                     description += f"<p>Attachment: <a href='{media['url']}'>{media['type']}</a></p>\n"
                     
@@ -137,6 +145,7 @@ class MastodonRSSGenerator:
         fg = FeedGenerator()
         fg.title(f"Mastodon Favorites and Bookmarks by @{self.config['mastodon_username']}")
         fg.link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}")
+        fg.atom_link(href=f"{self.config['mastodon_instance']}/@{self.config['mastodon_username']}/feed.rss", rel='self')
         fg.description(f"A feed of Mastodon favorites and bookmarks by @{self.config['mastodon_username']}")
         
         for item in sorted_items[:self.config['feed_item_limit']]:
