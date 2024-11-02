@@ -17,11 +17,14 @@ logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 class MastodonRSSGenerator:
-    def __init__(self, config_file: str, feed_item_limit: int = 5, debug: bool = False):
-        self.config = self._load_config(config_file)
-        self.feed_item_limit = feed_item_limit
+    def __init__(self, config_file: str, feed_item_limit: int = 5, debug: bool = False, log_level: str = 'ERROR'):
+        # Set log level first
+        logger.setLevel(getattr(logging, log_level.upper()))
+        # Then override with debug if specified
         if debug:
             logger.setLevel(logging.DEBUG)
+        self.config = self._load_config(config_file)
+        self.feed_item_limit = feed_item_limit
         
     def _load_config(self, config_file: str) -> Dict:
         """Load configuration from file"""
@@ -227,10 +230,14 @@ class MastodonRSSGenerator:
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
 @click.option('--limit', '-l', default=5, help='Number of feed items to include', type=int)
-def main(config: str, debug: bool, output: Optional[str], limit: int):
+@click.option('--log-level', '-L', 
+    type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False),
+    default='ERROR',
+    help='Set logging level')
+def main(config: str, debug: bool, output: Optional[str], limit: int, log_level: str):
     """Generate RSS feed from Mastodon favorites and bookmarks"""
     try:
-        generator = MastodonRSSGenerator(config, feed_item_limit=limit, debug=debug)
+        generator = MastodonRSSGenerator(config, feed_item_limit=limit, debug=debug, log_level=log_level)
         feed_content = generator.generate_feed()
         
         if output:
