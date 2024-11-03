@@ -16,16 +16,15 @@ jobs:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
 
-    - name: Install uv
+    - name: Install uv and enable caching
       uses: astral-sh/setup-uv@v3
       with:
         enable-cache: true
+        cache-dependency-glob: "uv.lock"
 
-    - name: "Set up Python"
-      uses: actions/setup-python@v5
-      with:
-        python-version-file: "pyproject.toml"
-        
+    - name: Set up Python
+      run: uv python install        
+
     - name: Install the project
       run: uv sync --no-dev
 

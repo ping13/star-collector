@@ -5,6 +5,7 @@ import yaml
 import re
 import feedparser
 from datetime import datetime
+import dateutil
 from feedgen.feed import FeedGenerator
 import json
 import os
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def is_iso_format(date_str):
     try:
-        datetime.fromisoformat(date_str)
+        dateutil.parser.isoparse(date_str)
         return True
     except ValueError:
         return False
@@ -93,7 +94,7 @@ class MastodonRSSGenerator:
         try:
             # Parse the date string to datetime
             if is_iso_format(date_str):  # Already ISO-like format
-                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                dt = dateutil.parser.isoparse(date_str)
             else:  # Try parsing other formats
                 dt = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %z")
             # Return in ISO format with UTC timezone
@@ -182,7 +183,7 @@ class MastodonRSSGenerator:
         title_text = clean_content.replace('&', '&#x26;').replace('<', '&#x3C;')
         entry.title(f"@{status['account']['username']}: {title_text}...")
         entry.link(href=status['url'])
-        entry.published(datetime.fromisoformat(self._ensure_iso_datetime(status['created_at'])))
+        entry.published(dateutil.parser.isoparse(self._ensure_iso_datetime(status['created_at'])))
         
         # Create description with media
         description = status['content']
@@ -239,7 +240,7 @@ class MastodonRSSGenerator:
         all_items = {item['id']: item for item in favorites + bookmarks + feedbin_stars + github_stars}
         sorted_items = sorted(
             all_items.values(),
-            key=lambda x: datetime.fromisoformat(self._ensure_iso_datetime(x['created_at'])),
+            key=lambda x: dateutil.parser.isoparse(self._ensure_iso_datetime(x['created_at'])),
             reverse=True
         )
 
