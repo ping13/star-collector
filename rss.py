@@ -251,7 +251,7 @@ class MastodonRSSGenerator:
         fg.link(href=f"{mastodon_config['mastodon_instance']}/@{mastodon_config['mastodon_username']}")
         fg.description(f"A collection of stars by @{mastodon_config['mastodon_username']}")
         
-        for item in sorted_items[:self.feed_item_limit]:
+        for item in sorted_items:
             self._create_feed_item(fg, item)
             
         return fg.rss_str(pretty=True)
@@ -260,7 +260,7 @@ class MastodonRSSGenerator:
 @click.option('--config', '-c', default='config.yaml', help='Path to configuration file')
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
-@click.option('--limit', '-l', default=5, help='Number of feed items to include', type=int)
+@click.option('--limit', '-l', default=5, help='Number of individual feed items to include', type=int)
 @click.option('--log-level', '-L', 
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False),
     default='ERROR',
