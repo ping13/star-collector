@@ -132,6 +132,10 @@ class StarRSSGenerator:
                     fe.title(entry.title)
                     fe.link(href=entry.link)
                     fe.description(entry.description)
+                    if hasattr(entry, "content"):
+                        fe.content(entry.content)
+                    elif hasattr(entry, "description"):
+                        fe.content(entry.description)
                     fe.pubDate(entry.published)
 
                     if hasattr(entry, "tags"):
@@ -163,26 +167,24 @@ class StarRSSGenerator:
         content = status['content'] 
         title_text = extract_titles.extract_title(text_maker.handle(content))
         assert isinstance(title_text, str), "title is not a string"
-        entry.title(f"{title_text} (@{status['account']['username']})")
+        entry.title(f"{title_text}")
+        entry.author(name=f"@{status['account']['username']}", email=" ")
         entry.link(href=status['url'])
         entry.published(dateutil.parser.isoparse(self._ensure_iso_datetime(status['created_at'])))
         entry.category([{'term': 'Mastodon'}])
-        
-        # Create description with media
-        description = status['content']
-        description += f"\n\n<p><a href='{status['url']}'>Link to original toot</a></p>"
-        
+
+        # enrich content with media, if any
         if status.get('media_attachments'):
-            description += "\n\n<h3>Attachments:</h3>\n"
+            content += "\n\n<h3>Attachments:</h3>\n"
             for media in status['media_attachments']:
                 if media['type'] == 'image':
-                    description += f"<p><img src='{media['url']}' alt='{media.get('description', '')}' width='100%'/></p>\n"
+                    content += f"<p><img src='{media['url']}' alt='{media.get('content', '')}' width='100%'/></p>\n"
                 elif media['type'] == 'video':
-                    description += f"<p><video src='{media['url']}' controls width='100%'>Your browser doesn't support video tags.</video></p>\n"
+                    content += f"<p><video src='{media['url']}' controls width='100%'>Your browser doesn't support video tags.</video></p>\n"
                 else:
-                    description += f"<p>Attachment: <a href='{media['url']}'>{media['type']}</a></p>\n"
-                    
-        entry.description(description)
+                    content += f"<p>Attachment: <a href='{media['url']}'>{media['type']}</a></p>\n"                    
+        entry.content(content)
+
         return True
 
     def generate_feed(self) -> str:
@@ -201,7 +203,6 @@ class StarRSSGenerator:
         fg.title(f"Star Collection for {mastodon_config['mastodon_username']}")
         fg.link(href=f"{mastodon_config['mastodon_instance']}/@{mastodon_config['mastodon_username']}")
         fg.description(f"A collection of favourites on multiple platforms by @{mastodon_config['mastodon_username']}")
-
         
         # Mastodon favorites and bookmarks
         mastodon_items = []        
@@ -237,7 +238,7 @@ class StarRSSGenerator:
             key=lambda x: x.pubDate(),
             reverse=True
         )              
-
+        
         return fg.rss_str(pretty=True)
 
 @click.command()
@@ -263,7 +264,7 @@ def main(config: str, debug: bool, output: Optional[str], limit: int, log_level:
             
     except Exception as e:
         logger.error(f"Error generating feed: {e}")
-        raise #click.ClickException(str(e))
+        raise #        click.ClickException(str(e))
 
 if __name__ == '__main__':
     main()
