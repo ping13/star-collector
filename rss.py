@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from html2text import html2text, HTML2Text
+from bs4 import BeautifulSoup
+
 import extract_titles
 
 # Configure logging
@@ -24,6 +26,23 @@ logger = logging.getLogger(__name__)
 text_maker = HTML2Text()
 text_maker.ignore_links = True
 text_maker.ignore_images = True
+
+from bs4 import BeautifulSoup
+
+def extract_urls_by_rel(html_string, rel_value="nofollow"):
+    """
+    Extract URLs from <a> tags with a specific rel attribute value.
+
+    Args:
+        html_string (str): The HTML string to parse.
+        rel_value (str): The value of the rel attribute to match.
+
+    Returns:
+        list: A list of URLs matching the rel attribute value.
+    """
+    soup = BeautifulSoup(html_string, "html.parser")
+    return [a['href'] for a in soup.find_all('a', rel=rel_value)]
+
 
 def is_iso_format(date_str):
     try:
@@ -190,6 +209,12 @@ class StarRSSGenerator:
             for media in status['media_attachments']:
                 entry.enclosure(media['url'], 0, f"{media['type']}/*")
 
+        # a bit unconventional, but add the first external of the status as an
+        # enclosure
+        external_urls = extract_urls_by_rel(content, rel_value="nofollow")
+        if len(external_urls) > 0:
+            entry.enclosure(external_urls[0], 0, f"text/html")
+        
         return True
 
     def generate_feed(self) -> str:
