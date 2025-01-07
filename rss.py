@@ -116,9 +116,9 @@ class StarRSSGenerator:
             logger.debug("No Feedbin configuration found, skipping")
             return False
 
-        for url in self.config["rss"]["urls"]:
+        for item in self.config["rss"]["urls"]:
             try:
-                feed = feedparser.parse(url)
+                feed = feedparser.parse(item["url"])
 
                 # Sort entries by published date (newest first)
                 sorted_entries = sorted(
@@ -143,6 +143,7 @@ class StarRSSGenerator:
                         fe.content(entry.description)
                     fe.pubDate(entry.published)
 
+                    initial_tag = [{'term': item['tag']}]
                     if hasattr(entry, "tags"):
                         # for some reason, feedparser generates attributes in the
                         # tags with value None. this irritates feedgen, so I filter
@@ -151,8 +152,10 @@ class StarRSSGenerator:
                             {k: v for k, v in d.items() if v is not None}
                             for d in entry.tags
                         ]
-                        fe.category(filtered_tags)
-
+                        fe.category(filtered_tags + initial_tag)
+                    else:
+                        fe.category(initial_tag)
+                        
             except Exception as e:
                 logger.error(f"Error fetching RSS feed for {url}: {e}")
                 raise

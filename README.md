@@ -17,7 +17,7 @@ Mastodon favorites and/or bookmarks and any perosnalized RSS feed you may have
 1. Clone this repository
 2. Install dependencies (using pip or your preferred package manager)
 3. Copy `.env.sample` to `.env` and configure your tokens
-4. Copy `config.yaml.sample` to `config.yaml` and configure your settings
+4. Create a `config.yaml` (see below) and configure your settings
 
 ## Configuration
 
@@ -32,9 +32,10 @@ mastodon:
 # Optional RSS configuration
 rss:
   urls:
-    - https://feedbin.com/starred/${FEEDBIN_ID}.xml
-    - https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
-    
+    - url: https://feedbin.com/starred/${FEEDBIN_ID}.xml
+      tag: feedbin
+    - url: https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
+      tag: linkding
 ```
 
 ## Usage
