@@ -1,6 +1,6 @@
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs at minute 0 of every hour      
+    - cron: '04 2 * * *'  # Runs at 2:04 every day
   workflow_dispatch:
 
 name: 🚀 Publish my stars
