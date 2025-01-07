@@ -170,8 +170,12 @@ class StarRSSGenerator:
         entry = feed.add_entry()
         entry.id(status['id'])
         content = status['content'] 
+        entry.content(content)
+
+        # extract title using a local transformer
         title_text = extract_titles.extract_title(text_maker.handle(content))
         assert isinstance(title_text, str), "title is not a string"
+        
         entry.title(f"{title_text}")
         entry.source(title=f"@{status['account'].get('display_name', 'Anonymous')}", url=status['account']['url'])
         entry.link(href=status['url'])
@@ -180,15 +184,8 @@ class StarRSSGenerator:
 
         # enrich content with media, if any
         if status.get('media_attachments'):
-            content += "\n\n<h3>Attachments:</h3>\n"
             for media in status['media_attachments']:
-                if media['type'] == 'image':
-                    content += f"<p><img src='{media['url']}' alt='{media.get('content', '')}' width='100%'/></p>\n"
-                elif media['type'] == 'video':
-                    content += f"<p><video src='{media['url']}' controls width='100%'>Your browser doesn't support video tags.</video></p>\n"
-                else:
-                    content += f"<p>Attachment: <a href='{media['url']}'>{media['type']}</a></p>\n"                    
-        entry.content(content)
+                entry.enclosure(media['url'], 0, f"{media['type']}/*")
 
         return True
 
