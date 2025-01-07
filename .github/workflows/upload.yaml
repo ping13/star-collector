@@ -42,6 +42,6 @@ jobs:
         username: ${{ vars.FTP_USER }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./build/
-        server-dir: public_html/ping13.net/rss/
+        server-dir: public_html/rss/
         
 
