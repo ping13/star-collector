@@ -32,6 +32,8 @@ jobs:
       run: mkdir mastodon && uv run --no-dev rss.py --limit 200 > mastodon/stars.rss
       env:
         MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+        FEEDBIN_ID: ${{ secrets.FEEDBIN_ID }}
+        LINKDING_ID: ${{ secrets.LINKDING_ID }}
         
     - name: 📂 Copy RSS 
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
