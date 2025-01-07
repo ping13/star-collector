@@ -133,52 +133,23 @@ class StarRSSGenerator:
                     fe.link(href=entry.link)
                     fe.description(entry.description)
                     fe.pubDate(entry.published)
-                    if hasattr(entry, "categories"):
-                        fe.category(entry.category)
-            
+
+                    if hasattr(entry, "tags"):
+                        # for some reason, feedparser generates attributes in the
+                        # tags with value None. this irritates feedgen, so I filter
+                        # the attributes with None value in here.
+                        filtered_tags = [
+                            {k: v for k, v in d.items() if v is not None}
+                            for d in entry.tags
+                        ]
+                        fe.category(filtered_tags)
+
             except Exception as e:
                 logger.error(f"Error fetching RSS feed for {url}: {e}")
                 raise
 
         return True
-    
-    def _fetch_github_stars(self) -> List[Dict]:
-        """Fetch starred repositories from GitHub"""
-        if 'github' not in self.config or not self.config['github'].get('starfeed'):
-            logger.debug("No GitHub configuration found, skipping")
-            return []
-
-        logger.debug(f"Fetching GitHub stars")
                 
-        try:
-            response = requests.get(self.config['github']['starfeed'])
-            response.raise_for_status()
-            stars = response.json()
-            
-            github_items = []
-            for star in stars:
-                # Convert GitHub star to a format similar to Mastodon items
-                description = f"{star['description'] or ''}\n\nLanguage: {star['language'] or 'Not specified'}\n⭐ {star['stargazers_count']}"
-                
-                item = {
-                    'id': f"github_{star['id']}",
-                    'content': description,
-                    'url': star['html_url'],
-                    'created_at': self._ensure_iso_datetime(star['created_at']),
-                    'account': {
-                        'username': f"GitHub: {star['owner']['login']}"
-                    },
-                    'media_attachments': []
-                }
-                github_items.append(item)
-
-            logger.debug(f"Found {len(github_items)} GitHub stars")
-
-            return github_items[:self.feed_item_limit]
-            
-        except Exception as e:
-            logger.error(f"Error fetching GitHub stars: {e}")
-            return []
 
     def _create_feed_item_from_mastodon(self, feed: FeedGenerator, status: Dict):
         """Create an RSS feed item from a status"""
@@ -217,6 +188,8 @@ class StarRSSGenerator:
     def generate_feed(self) -> str:
         """Generate the RSS feed"""
 
+        # We always assume there is a mastodon config
+        
         mastodon_items_per_page = min(40, self.feed_item_limit)
         mastodon_instance = self.config['mastodon']['mastodon_instance']
 
@@ -227,10 +200,10 @@ class StarRSSGenerator:
         mastodon_config = self.config['mastodon']
         fg.title(f"Star Collection for {mastodon_config['mastodon_username']}")
         fg.link(href=f"{mastodon_config['mastodon_instance']}/@{mastodon_config['mastodon_username']}")
-        fg.description(f"A collection of stars by @{mastodon_config['mastodon_username']}")
+        fg.description(f"A collection of favourites on multiple platforms by @{mastodon_config['mastodon_username']}")
 
         
-        # Mastodon favorites
+        # Mastodon favorites and bookmarks
         mastodon_items = []        
         for item_type in self.config['mastodon']["types"]:
             ## Fetch Mastodon favorites
@@ -243,7 +216,7 @@ class StarRSSGenerator:
                 if len(data) < mastodon_items_per_page or not next_url:
                     break
 
-        # remove possible duplicates
+        # remove possible duplicates of Mastodon favorites and bookmarks
         all_items = {item['id']: item for item in mastodon_items}
         sorted_items = sorted(
             all_items.values(),
@@ -252,13 +225,18 @@ class StarRSSGenerator:
         )                
         for item in sorted_items:
             self._create_feed_item_from_mastodon(fg, item)
-                
+            
         # Fetch items from other RSS feeds
         self._fetch_rss_feeds(fg)
 
-        # Fetch stars from GitHub, if available
-#        github_stars = self._fetch_github_stars()
 
+
+        # hack: sort ascending
+        fg._FeedGenerator__feed_entries = sorted(
+            fg._FeedGenerator__feed_entries,
+            key=lambda x: x.pubDate(),
+            reverse=True
+        )              
 
         return fg.rss_str(pretty=True)
 

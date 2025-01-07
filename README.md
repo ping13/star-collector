@@ -1,9 +1,8 @@
 # Star Collector
 
-A tool to generate an RSS feed combining your starred/favorite content from:
-- Mastodon favorites and bookmarks
-- Feedbin starred articles
-- GitHub starred repositories
+A tool to generate an RSS feed combining your starred/favorite content from
+Mastodon favorites and/or bookmarks and any perosnalized RSS feed you may have
+(for example Feedbin or Linkding or even GitHub)
 
 ## Features
 
@@ -30,13 +29,12 @@ mastodon:
   mastodon_instance: "https://your.instance"
   mastodon_username: "yourusername"
 
-# Optional Feedbin configuration
-feedbin:
-  starfeed: "https://feedbin.com/starred/..."
-
-# Optional GitHub configuration
-github:
-  starfeed: "https://api.github.com/users/USERNAME/starred"
+# Optional RSS configuration
+rss:
+  urls:
+    - https://feedbin.com/starred/${FEEDBIN_ID}.xml
+    - https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
+    
 ```
 
 ## Usage
@@ -58,3 +56,8 @@ Options:
   --help                            Show this message and exit
 ```
 
+## Ideas
+
+- [LinkedIn with unofficial Python API](https://github.com/tomquirk/linkedin-api)
+- Spotify
+- ...
