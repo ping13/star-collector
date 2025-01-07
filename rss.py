@@ -132,6 +132,11 @@ class StarRSSGenerator:
                     fe.title(entry.title)
                     fe.link(href=entry.link)
                     fe.description(entry.description)
+                    if hasattr(entry, "source"):
+                        fe.source(entry.source)
+                    else:
+                        fe.source(title=urlparse(entry.link).netloc, url=entry.link)
+
                     if hasattr(entry, "content"):
                         fe.content(entry.content)
                     elif hasattr(entry, "description"):
@@ -168,7 +173,7 @@ class StarRSSGenerator:
         title_text = extract_titles.extract_title(text_maker.handle(content))
         assert isinstance(title_text, str), "title is not a string"
         entry.title(f"{title_text}")
-        entry.author(name=f"@{status['account']['username']}", email=" ")
+        entry.source(title=f"@{status['account'].get('display_name', 'Anonymous')}", url=status['account']['url'])
         entry.link(href=status['url'])
         entry.published(dateutil.parser.isoparse(self._ensure_iso_datetime(status['created_at'])))
         entry.category([{'term': 'Mastodon'}])
