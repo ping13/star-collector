@@ -2,7 +2,12 @@ mastodon:
   mastodon_instance: https://swiss.social
   mastodon_username: ping13
   feed_item_limit: 5
-feedbin:
-  starfeed: https://feedbin.com/starred/l4ydHXVjUxwJcS8pypZ0dg.xml
-github:
-  starfeed: https://api.github.com/users/ping13/starred
+  types:
+    - favourites
+#    - bookmarks
+rss:
+  urls:
+    - https://feedbin.com/starred/${FEEDBIN_ID}.xml
+    - https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
+#github:
+#  starfeed: https://api.github.com/users/ping13/starred

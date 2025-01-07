@@ -16,13 +16,13 @@ dependencies = [
     "requests>=2.32.3",
     "feedparser>=6.0.11",
     "python-dateutil>=2.9.0.post0",
-]
-
-[tool.uv]
-dev-dependencies = [
-  "aider-chat",
+    "envyaml>=1.10.211231",
+    "transformers",
+    "torch>=2.5.1",
+    "html2text>=2024.2.26",
+    "diskcache>=5.6.3",
 ]
 
 [tool.uv.sources]
-aider-chat = { git = "https://github.com/paul-gauthier/aider.git", branch = "main" }
+transformers = { git = "https://github.com/huggingface/transformers.git" }
 

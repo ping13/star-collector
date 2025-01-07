@@ -17,8 +17,11 @@ action:		## Run Github Actions locally, https://github.com/nektos/act
 test:		## test the generation of feeds and see if it is a valid feed
 	uv run --no-dev python rss.py --limit 200 | uv run python validate_feed.py
 
+titles:		## show the titles of the last 200 items
+	uv run python rss.py --limit 200 | yq eval -p=xml -o=json | jq  ".rss.channel.item[].title"
+
 aider:		## Start a chat with an LLM to change your code
-	uv run aider --architect
+	uvx -p 3.12 --from aider-chat aider --architect --watch-files
 
 
 

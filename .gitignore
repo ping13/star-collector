@@ -1,8 +1,3 @@
-*~
-.aider*
-.env
-.vars
-
 # Config files
 
 # Python
@@ -39,3 +34,11 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# project
+*.cache
+*~
+.aider*
+.env
+.vars
+

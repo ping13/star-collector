@@ -1,7 +1,7 @@
 import click
 import requests
 import logging
-import yaml
+from envyaml import EnvYAML
 import re
 import feedparser
 from datetime import datetime
@@ -12,10 +12,17 @@ import os
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+from html2text import html2text, HTML2Text
+import extract_titles
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
+
+
+text_maker = HTML2Text()
+text_maker.ignore_links = True
+text_maker.ignore_images = True
 
 def is_iso_format(date_str):
     try:
@@ -24,7 +31,7 @@ def is_iso_format(date_str):
     except ValueError:
         return False
     
-class MastodonRSSGenerator:
+class StarRSSGenerator:
     def __init__(self, config_file: str, feed_item_limit: int = 5, debug: bool = False, log_level: str = 'ERROR'):
         # Set log level first
         logger.setLevel(getattr(logging, log_level.upper()))
@@ -44,12 +51,11 @@ class MastodonRSSGenerator:
         if not os.path.exists(config_file):
             raise FileNotFoundError(f"Configuration file {config_file} not found")
             
-        with open(config_file) as f:
-            config = yaml.safe_load(f)
+        config = EnvYAML(config_file)
         
         if 'mastodon' not in config:
             raise ValueError("Missing 'mastodon' section in config file")
-            
+
         # Override access_token from environment if available
         if os.getenv('MASTODON_ACCESS_TOKEN'):
             config['mastodon']['access_token'] = os.getenv('MASTODON_ACCESS_TOKEN')
@@ -109,7 +115,7 @@ class MastodonRSSGenerator:
             logger.debug("No Feedbin configuration found, skipping")
             return []
 
-        logger.debug(f"Fetching Feedbin stars")
+        logger.debug(f"Fetching Feedbin stars for {self.config['feedbin']['starfeed']}")
 
         try:
             feed = feedparser.parse(self.config['feedbin']['starfeed'])
@@ -175,15 +181,21 @@ class MastodonRSSGenerator:
             logger.error(f"Error fetching GitHub stars: {e}")
             return []
 
-    def _create_feed_item(self, feed: FeedGenerator, status: Dict):
+    def _create_feed_item_from_mastodon(self, feed: FeedGenerator, status: Dict):
         """Create an RSS feed item from a status"""
+        
+        if status.get("visibility") != "public":
+            logger.info("Ignoring non-public toot")
+
         entry = feed.add_entry()
         entry.id(status['id'])
-        clean_content = self._strip_html(status['content'])[:100]
-        title_text = clean_content.replace('&', '&#x26;').replace('<', '&#x3C;')
-        entry.title(f"@{status['account']['username']}: {title_text}...")
+        content = status['content'] 
+        title_text = extract_titles.extract_title(text_maker.handle(content))
+        assert isinstance(title_text, str), "title is not a string"
+        entry.title(f"{title_text} (@{status['account']['username']})")
         entry.link(href=status['url'])
         entry.published(dateutil.parser.isoparse(self._ensure_iso_datetime(status['created_at'])))
+        entry.category([{'term': 'Mastodon'}])
         
         # Create description with media
         description = status['content']
@@ -204,63 +216,56 @@ class MastodonRSSGenerator:
     def generate_feed(self) -> str:
         """Generate the RSS feed"""
 
-        # Mastodon
-        mastodon_items_per_page = 40
+        mastodon_items_per_page = min(40, self.feed_item_limit)
         mastodon_instance = self.config['mastodon']['mastodon_instance']
-        ## Fetch Mastodon favorites
-        favorites = []
-        next_url = f"{mastodon_instance}/api/v1/favourites?limit={mastodon_items_per_page}"
-        while len(favorites) < self.feed_item_limit:
-            data, next_url = self._fetch_mastodon_data(next_url)
-            if not data:
-                break
-            favorites.extend(data)
-            if len(data) < mastodon_items_per_page or not next_url:
-                break
+
+        assert isinstance(self.config['mastodon']["types"], list), "Bad Configuration, expect a list for mastodon.types"
                 
-        ## Fetch Mastodon bookmarks
-        bookmarks = []
-        next_url = f"{mastodon_instance}/api/v1/bookmarks?limit={mastodon_items_per_page}"
-        while len(bookmarks) < self.feed_item_limit:
-            data, next_url = self._fetch_mastodon_data(next_url)
-            if not data:
-                break
-            bookmarks.extend(data)
-
-            if len(data) < mastodon_items_per_page or not next_url:
-                break
-
-        # Fetch stars from Feedbin
-        feedbin_stars = self._fetch_feedbin_stars()
-
-        # Fetch stars from GitHub
-        github_stars = self._fetch_github_stars()
-
-        # Combine and sort items
-        all_items = {item['id']: item for item in favorites + bookmarks + feedbin_stars + github_stars}
-        sorted_items = sorted(
-            all_items.values(),
-            key=lambda x: dateutil.parser.isoparse(self._ensure_iso_datetime(x['created_at'])),
-            reverse=True
-        )
-
         # Create feed from the items above
         fg = FeedGenerator()
         mastodon_config = self.config['mastodon']
         fg.title(f"Star Collection for {mastodon_config['mastodon_username']}")
         fg.link(href=f"{mastodon_config['mastodon_instance']}/@{mastodon_config['mastodon_username']}")
         fg.description(f"A collection of stars by @{mastodon_config['mastodon_username']}")
+
         
+        # Mastodon favorites
+        mastodon_items = []        
+        for item_type in self.config['mastodon']["types"]:
+            ## Fetch Mastodon favorites
+            next_url = f"{mastodon_instance}/api/v1/{item_type}?limit={mastodon_items_per_page}"
+            while len(mastodon_items) < self.feed_item_limit:
+                data, next_url = self._fetch_mastodon_data(next_url)
+                if not data:
+                    break
+                mastodon_items.extend(data)
+                if len(data) < mastodon_items_per_page or not next_url:
+                    break
+
+        # remove possible duplicates
+        all_items = {item['id']: item for item in mastodon_items}
+        sorted_items = sorted(
+            all_items.values(),
+            key=lambda x: dateutil.parser.isoparse(self._ensure_iso_datetime(x['created_at'])),
+            reverse=True
+        )                
         for item in sorted_items:
-            self._create_feed_item(fg, item)
-            
+            self._create_feed_item_from_mastodon(fg, item)
+                
+        # Fetch stars from Feedbin, if available
+#        feedbin_stars = self._fetch_feedbin_stars()
+
+        # Fetch stars from GitHub, if available
+#        github_stars = self._fetch_github_stars()
+
+
         return fg.rss_str(pretty=True)
 
 @click.command()
 @click.option('--config', '-c', default='config.yaml', help='Path to configuration file')
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
-@click.option('--limit', '-l', default=5, help='Number of individual feed items to include', type=int)
+@click.option('--limit', '-l', default=5, help='Number of feed items to include per source', type=int)
 @click.option('--log-level', '-L', 
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False),
     default='ERROR',
@@ -268,7 +273,7 @@ class MastodonRSSGenerator:
 def main(config: str, debug: bool, output: Optional[str], limit: int, log_level: str):
     """Generate RSS feed from Mastodon favorites and bookmarks"""
     try:
-        generator = MastodonRSSGenerator(config, feed_item_limit=limit, debug=debug, log_level=log_level)
+        generator = StarRSSGenerator(config, feed_item_limit=limit, debug=debug, log_level=log_level)
         feed_content = generator.generate_feed()
         
         if output:
@@ -279,7 +284,7 @@ def main(config: str, debug: bool, output: Optional[str], limit: int, log_level:
             
     except Exception as e:
         logger.error(f"Error generating feed: {e}")
-        raise click.ClickException(str(e))
+        raise #click.ClickException(str(e))
 
 if __name__ == '__main__':
     main()
