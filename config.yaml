@@ -7,7 +7,7 @@ mastodon:
 #    - bookmarks
 rss:
   urls:
-    - https://feedbin.com/starred/${FEEDBIN_ID}.xml
+#    - https://feedbin.com/starred/${FEEDBIN_ID}.xml
     - https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
 #github:
 #  starfeed: https://api.github.com/users/ping13/starred

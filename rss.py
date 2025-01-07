@@ -1,3 +1,4 @@
+import sys
 import click
 import requests
 import logging
@@ -109,40 +110,38 @@ class StarRSSGenerator:
             logger.warning(f"Date parsing error: {e} for date: {date_str}")
             return date_str
 
-    def _fetch_feedbin_stars(self) -> List[Dict]:
+    def _fetch_rss_feeds(self, fg) -> bool:
         """Fetch starred items from Feedbin RSS feed"""
-        if 'feedbin' not in self.config or not self.config['feedbin'].get('starfeed'):
+        if 'rss' not in self.config or not self.config['rss']:
             logger.debug("No Feedbin configuration found, skipping")
-            return []
+            return False
 
-        logger.debug(f"Fetching Feedbin stars for {self.config['feedbin']['starfeed']}")
+        for url in self.config["rss"]["urls"]:
+            try:
+                feed = feedparser.parse(url)
 
-        try:
-            feed = feedparser.parse(self.config['feedbin']['starfeed'])
-            
-            feedbin_items = []
-            for entry in feed.entries:
-                # Convert Feedbin entry to a format similar to Mastodon items
-                item = {
-                    'id': f"feedbin_{entry.get('id', '')}",
-                    'content': entry.get('description', ''),
-                    'url': entry.get('link', ''),
-                    'created_at': self._ensure_iso_datetime(entry.get('published', '')),
-                    'account': {
-                        'username': 'Feedbin Star'
-                    },
-                    'media_attachments': []
-                }
-                feedbin_items.append(item)
-
-            logger.debug(f"Found {len(feedbin_items)} Feedbin stars")
+                # Sort entries by published date (newest first)
+                sorted_entries = sorted(
+                    feed.entries,
+                    key=lambda entry: entry.published_parsed if hasattr(entry, "published_parsed") else None,
+                    reverse=True
+                )
                 
-            return feedbin_items[:self.feed_item_limit]
+                for entry in sorted_entries[:self.feed_item_limit]:
+                    fe = fg.add_entry()
+                    fe.title(entry.title)
+                    fe.link(href=entry.link)
+                    fe.description(entry.description)
+                    fe.pubDate(entry.published)
+                    if hasattr(entry, "categories"):
+                        fe.category(entry.category)
             
-        except Exception as e:
-            logger.error(f"Error fetching Feedbin stars: {e}")
-            return []
+            except Exception as e:
+                logger.error(f"Error fetching RSS feed for {url}: {e}")
+                raise
 
+        return True
+    
     def _fetch_github_stars(self) -> List[Dict]:
         """Fetch starred repositories from GitHub"""
         if 'github' not in self.config or not self.config['github'].get('starfeed'):
@@ -186,6 +185,7 @@ class StarRSSGenerator:
         
         if status.get("visibility") != "public":
             logger.info("Ignoring non-public toot")
+            return False
 
         entry = feed.add_entry()
         entry.id(status['id'])
@@ -212,6 +212,7 @@ class StarRSSGenerator:
                     description += f"<p>Attachment: <a href='{media['url']}'>{media['type']}</a></p>\n"
                     
         entry.description(description)
+        return True
 
     def generate_feed(self) -> str:
         """Generate the RSS feed"""
@@ -252,8 +253,8 @@ class StarRSSGenerator:
         for item in sorted_items:
             self._create_feed_item_from_mastodon(fg, item)
                 
-        # Fetch stars from Feedbin, if available
-#        feedbin_stars = self._fetch_feedbin_stars()
+        # Fetch items from other RSS feeds
+        self._fetch_rss_feeds(fg)
 
         # Fetch stars from GitHub, if available
 #        github_stars = self._fetch_github_stars()
