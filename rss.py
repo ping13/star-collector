@@ -131,7 +131,7 @@ class StarRSSGenerator:
 
     def _fetch_rss_feeds(self, fg) -> bool:
         """Fetch starred items from Feedbin RSS feed"""
-        if 'rss' not in self.config or not self.config['rss']:
+        if 'rss' not in self.config or not self.config['rss'] or self.config['rss'].get("urls") is None:
             logger.debug("No Feedbin configuration found, skipping")
             return False
 
@@ -146,7 +146,7 @@ class StarRSSGenerator:
                     reverse=True
                 )
                 
-                for entry in sorted_entries[:self.feed_item_limit]:
+                for entry in sorted_entries[:self.feed_item_limit+1]:
                     fe = fg.add_entry()
                     fe.title(entry.title)
                     fe.link(href=entry.link)
@@ -160,7 +160,7 @@ class StarRSSGenerator:
                         fe.content(entry.content)
                     elif hasattr(entry, "description"):
                         fe.content(entry.description)
-                    fe.pubDate(entry.published)
+                        fe.pubDate(entry.published)
 
                     initial_tag = [{'term': item['tag']}]
                     if hasattr(entry, "tags"):
@@ -188,7 +188,8 @@ class StarRSSGenerator:
         if status.get("visibility") != "public":
             logger.info("Ignoring non-public toot")
             return False
-
+        logger.debug(f"{json.dumps(status)}")
+        
         entry = feed.add_entry()
         entry.id(status['id'])
         content = status['content'] 
@@ -204,16 +205,26 @@ class StarRSSGenerator:
         entry.published(dateutil.parser.isoparse(self._ensure_iso_datetime(status['created_at'])))
         entry.category([{'term': 'Mastodon'}])
 
-        # enrich content with media, if any
+        # try to understand what the source of preview of this toot would
+        # be. If there is a card, see
+        # https://docs.joinmastodon.org/entities/PreviewCard/
+        if status.get("card") and status["card"].get("url").startswith("http"):
+            entry.enclosure(status["card"]["url"], 0, f"text/html")
+        else:
+            # a bit unconventional, but add the first external of the status as an
+            # enclosure
+            external_urls = extract_urls_by_rel(content, rel_value="nofollow")
+            if len(external_urls) > 0:
+                entry.enclosure(external_urls[0], 0, f"text/html")
+
+        # additionally, enrich content with media, if it exists
         if status.get('media_attachments'):
             for media in status['media_attachments']:
-                entry.enclosure(media['url'], 0, f"{media['type']}/*")
+                if media.get('preview_url'):
+                    entry.enclosure(media['preview_url'], 0, f"{media['type']}/*")
+                else:
+                    entry.enclosure(media['url'], 0, f"{media['type']}/*")
 
-        # a bit unconventional, but add the first external of the status as an
-        # enclosure
-        external_urls = extract_urls_by_rel(content, rel_value="nofollow")
-        if len(external_urls) > 0:
-            entry.enclosure(external_urls[0], 0, f"text/html")
         
         return True
 
@@ -222,7 +233,7 @@ class StarRSSGenerator:
 
         # We always assume there is a mastodon config
         
-        mastodon_items_per_page = min(40, self.feed_item_limit)
+        mastodon_items_per_page = min(40, self.feed_item_limit) + 1
         mastodon_instance = self.config['mastodon']['mastodon_instance']
 
         assert isinstance(self.config['mastodon']["types"], list), "Bad Configuration, expect a list for mastodon.types"
