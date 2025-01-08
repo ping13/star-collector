@@ -210,12 +210,8 @@ class StarRSSGenerator:
         # https://docs.joinmastodon.org/entities/PreviewCard/
         if status.get("card") and status["card"].get("url").startswith("http"):
             entry.enclosure(status["card"]["url"], 0, f"text/html")
-        else:
-            # a bit unconventional, but add the first external of the status as an
-            # enclosure
-            external_urls = extract_urls_by_rel(content, rel_value="nofollow")
-            if len(external_urls) > 0:
-                entry.enclosure(external_urls[0], 0, f"text/html")
+            if status["card"].get("image"):
+                entry.enclosure(status["card"]["image"], 0, f"image/*")
 
         # additionally, enrich content with media, if it exists
         if status.get('media_attachments'):
