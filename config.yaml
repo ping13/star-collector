@@ -6,12 +6,14 @@ mastodon:
   types:
     - favourites
 #    - bookmarks
+
 rss:
   urls:
     - url: https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
       tag: linkding
     # - url: https://feedbin.com/starred/${FEEDBIN_ID}.xml
     #   tag: feedbin
- #github:
-#  starfeed: https://api.github.com/users/ping13/starred
+
+  
+
 

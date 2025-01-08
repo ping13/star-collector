@@ -1,5 +1,10 @@
 # Star Collector
 
+[<img alt="Deployed with FTP Deploy Action"
+src="https://img.shields.io/badge/Deployed With-FTP DEPLOY
+ACTION-%3CCOLOR%3E?style=for-the-badge&color=0077b6">](https://github.com/SamKirkland/FTP-Deploy-Action)
+
+
 A tool to generate an RSS feed combining your starred/favorite content from
 Mastodon favorites and/or bookmarks and any perosnalized RSS feed you may have
 (for example Feedbin or Linkding or even GitHub)
@@ -62,3 +67,8 @@ Options:
 - [LinkedIn with unofficial Python API](https://github.com/tomquirk/linkedin-api)
 - Spotify
 - ...
+
+## Limitations
+
+- Currently, there is no way to use the creation date of a like in Mastodon,
+  see this [issue](https://github.com/mastodon/mastodon/issues/1608).
