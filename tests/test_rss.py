@@ -175,11 +175,12 @@ def test_feed():
 
 def test_exclude_categories_handling(generator, test_feed, mocker):
     """Test that entries with excluded categories are filtered out"""
-    original_parse = feedparser.parse  # Store the original parse function
+    # Create a mock response that returns our test feed content
+    feed_content = test_feed.rss_str()
+    mock_parsed_feed = feedparser.parse(feed_content)
     
-    def mock_parse(url):
-        feed_content = test_feed.rss_str()
-        return original_parse(feed_content)  # Use the original parse function
+    # Mock feedparser.parse to return our pre-parsed feed
+    mocker.patch('feedparser.parse', return_value=mock_parsed_feed)
     
     # Create output feed
     fg = FeedGenerator()
@@ -187,24 +188,23 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     fg.link(href='http://example.com')
     fg.description('Output Description')
     
-    # Mock feedparser.parse
-    mocker.patch('feedparser.parse', side_effect=mock_parse)
+    # Process the feed
     generator._fetch_rss_feeds(fg)
     
     # Generate and parse resulting feed
-    feed_content = fg.rss_str()
-    feed = feedparser.parse(feed_content)
+    output_feed_content = fg.rss_str()
+    output_feed = feedparser.parse(output_feed_content)
     
     # Verify only entries without excluded categories are present
     entries_with_private = [
-        entry for entry in feed.entries 
+        entry for entry in output_feed.entries 
         if any(tag['term'] == 'private' for tag in getattr(entry, 'tags', []))
     ]
     assert len(entries_with_private) == 0  # No entries with 'private' category should be present
     
     # Verify public entries are still there
     entries_with_public = [
-        entry for entry in feed.entries 
+        entry for entry in output_feed.entries 
         if any(tag['term'] == 'public' for tag in getattr(entry, 'tags', []))
     ]
     assert len(entries_with_public) > 0  # Public entries should be present
