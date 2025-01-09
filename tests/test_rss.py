@@ -184,8 +184,11 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     mock_response.__enter__ = mocker.Mock(return_value=mock_response)
     mock_response.__exit__ = mocker.Mock(return_value=None)
     
-    # Mock urlopen to return our mock response
+    # Mock urlopen to return our mock response for ALL URLs
     urlopen_mock = mocker.patch('urllib.request.urlopen', return_value=mock_response)
+    
+    # Temporarily disable print statements
+    mocker.patch('builtins.print')
     
     # Create output feed
     fg = FeedGenerator()
@@ -199,7 +202,6 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     # Verify urlopen was called
     assert urlopen_mock.called
     
-    # Rest of the assertions...
     output_feed_content = fg.rss_str()
     output_feed = feedparser.parse(output_feed_content)
     

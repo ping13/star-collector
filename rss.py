@@ -150,12 +150,12 @@ class StarRSSGenerator:
                     # Skip entries with tags as excluded categories
                     if 'exclude_categories' in self.config['rss']:
                         if hasattr(entry, 'tags'):
-                            print(entry.tags)
+                            logger.debug(f"Entry tags: {entry.tags}")
                             if any(tag.get('term') in self.config['rss']['exclude_categories'] \
                                    for tag in entry.tags):
-                                print("Found private entry!")
+                                logger.debug("Found private entry, skipping")
                                 continue
-                    print("HELLO")
+                    logger.debug("Processing public entry")
                     # now create the entry
                     fe = fg.add_entry()
                     fe.title(entry.title)
