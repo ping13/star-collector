@@ -6,6 +6,7 @@ import yaml
 import feedparser
 from datetime import datetime
 import xml.etree.ElementTree as ET
+from feedgen.feed import FeedGenerator
 
 @pytest.fixture
 def sample_config():
