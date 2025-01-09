@@ -91,6 +91,10 @@ def test_create_feed_item_from_mastodon(generator, sample_mastodon_status, mocke
     
     from feedgen.feed import FeedGenerator
     fg = FeedGenerator()
+    # Add required feed properties
+    fg.title('Test Feed')
+    fg.link(href='http://example.com')
+    fg.description('Test Description')
     
     success = generator._create_feed_item_from_mastodon(fg, sample_mastodon_status)
     assert success is True
@@ -121,6 +125,10 @@ def test_private_toot_handling(generator):
     
     from feedgen.feed import FeedGenerator
     fg = FeedGenerator()
+    # Add required feed properties
+    fg.title('Test Feed')
+    fg.link(href='http://example.com')
+    fg.description('Test Description')
     
     # Test that private toot is not added
     success = generator._create_feed_item_from_mastodon(fg, private_status)
@@ -134,6 +142,10 @@ def test_private_toot_handling(generator):
 def test_exclude_categories_handling(generator):
     from feedgen.feed import FeedGenerator
     fg = FeedGenerator()
+    # Add required feed properties
+    fg.title('Test Feed')
+    fg.link(href='http://example.com')
+    fg.description('Test Description')
     
     # Create a test entry with excluded category
     fe = fg.add_entry()
