@@ -19,7 +19,7 @@ def sample_config():
         },
         'rss': {
             'urls': [
-                {'url': 'file://test.xml', 'tag': 'test'},  # Changed to local file
+                {'url': 'file://tests/test.xml', 'tag': 'test'},  # Updated path
             ],
             'exclude_categories': ['private', 'personal']
         }
@@ -176,16 +176,25 @@ def test_feed():
 @pytest.fixture
 def test_xml_file(test_feed):
     """Create a temporary test.xml file with our test feed content"""
-    with open('test.xml', 'wb') as f:
+    filepath = 'tests/test.xml'
+    with open(filepath, 'wb') as f:
         f.write(test_feed.rss_str())
     
-    yield 'test.xml'
+    yield filepath
     
     # Cleanup
-    os.unlink('test.xml')
+    os.unlink(filepath)
 
 def test_exclude_categories_handling(generator, test_xml_file):
     """Test that entries with excluded categories are filtered out"""
+    # DEBUG: Verify input file
+    with open(test_xml_file, 'rb') as f:
+        input_content = f.read()
+    input_feed = feedparser.parse(input_content)
+    print("Input feed entries:", len(input_feed.entries))
+    for entry in input_feed.entries:
+        print("Entry tags:", getattr(entry, 'tags', []))
+
     # Create output feed
     fg = FeedGenerator()
     fg.title('Output Feed')
