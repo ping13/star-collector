@@ -13,6 +13,8 @@ rss:
       tag: linkding
     # - url: https://feedbin.com/starred/${FEEDBIN_ID}.xml
     #   tag: feedbin
+  exclude_categories:
+    - private
 
   
 
