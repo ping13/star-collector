@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+  <channel>
+    <title>Test Feed</title>
+    <link>http://example.com</link>
+    <description>Test Description</description>
+    <item>
+      <title>Public Entry</title>
+      <link>http://example.com/1</link>
+      <description>Public Description</description>
+      <category>public</category>
+      <pubDate>2024-03-14T12:00:00Z</pubDate>
+      <guid>http://example.com/1</guid>
+    </item>
+    <item>
+      <title>Private Entry</title>
+      <link>http://example.com/2</link>
+      <description>Private Description</description>
+      <category>private</category>
+      <pubDate>2024-03-14T12:00:00Z</pubDate>
+      <guid>http://example.com/2</guid>
+    </item>
+    <item>
+      <title>Mixed Entry</title>
+      <link>http://example.com/3</link>
+      <description>Mixed Description</description>
+      <category>public</category>
+      <category>personal</category>
+      <pubDate>2024-03-14T12:00:00Z</pubDate>
+      <guid>http://example.com/3</guid>
+    </item>
+  </channel>
+</rss>
