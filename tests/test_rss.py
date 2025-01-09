@@ -4,7 +4,7 @@ import os
 import tempfile
 import yaml
 import feedparser
-from datetime import datetime
+from datetime import datetime, timezone
 import xml.etree.ElementTree as ET
 from feedgen.feed import FeedGenerator
 
@@ -153,7 +153,7 @@ def test_feed():
     fe.link(href='http://example.com/1')
     fe.description('Public Description')
     fe.category([{'term': 'public'}])
-    fe.pubDate(datetime.now())
+    fe.pubDate(datetime.now(timezone.utc))
 
     # Private entry
     fe = fg.add_entry()
@@ -161,7 +161,7 @@ def test_feed():
     fe.link(href='http://example.com/2')
     fe.description('Private Description')
     fe.category([{'term': 'private'}])
-    fe.pubDate(datetime.now())
+    fe.pubDate(datetime.now(timezone.utc))
 
     # Entry with multiple categories
     fe = fg.add_entry()
@@ -169,7 +169,7 @@ def test_feed():
     fe.link(href='http://example.com/3')
     fe.description('Mixed Description')
     fe.category([{'term': 'public'}, {'term': 'personal'}])
-    fe.pubDate(datetime.now())
+    fe.pubDate(datetime.now(timezone.utc))
     
     return fg
 
