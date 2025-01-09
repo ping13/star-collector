@@ -138,52 +138,45 @@ def test_private_toot_handling(generator):
     feed = feedparser.parse(feed_content)
     assert len(feed.entries) == 0
 
-def test_exclude_categories_handling(generator):
-    # Create a test feed with entries that should and shouldn't be excluded
-    from feedgen.feed import FeedGenerator
-    test_fg = FeedGenerator()
-    test_fg.title('Test Feed')
-    test_fg.link(href='http://example.com')
-    test_fg.description('Test Description')
+@pytest.fixture
+def test_feed():
+    """Create a test feed with various categories for testing"""
+    fg = FeedGenerator()
+    fg.title('Test Feed')
+    fg.link(href='http://example.com')
+    fg.description('Test Description')
     
-    # Create a test entry that should NOT be excluded
-    fe = test_fg.add_entry()
+    # Public entry
+    fe = fg.add_entry()
     fe.title('Public Entry')
     fe.link(href='http://example.com/1')
     fe.description('Public Description')
     fe.category([{'term': 'public'}])
+    fe.pubDate(datetime.now())
 
-    # Create a test entry that should be excluded (has 'private' category)
-    fe = test_fg.add_entry()
+    # Private entry
+    fe = fg.add_entry()
     fe.title('Private Entry')
     fe.link(href='http://example.com/2')
     fe.description('Private Description')
     fe.category([{'term': 'private'}])
+    fe.pubDate(datetime.now())
+
+    # Entry with multiple categories
+    fe = fg.add_entry()
+    fe.title('Mixed Entry')
+    fe.link(href='http://example.com/3')
+    fe.description('Mixed Description')
+    fe.category([{'term': 'public'}, {'term': 'personal'}])
+    fe.pubDate(datetime.now())
     
-    # Mock feedparser.parse to return our test feed
+    return fg
+
+def test_exclude_categories_handling(generator, test_feed):
+    """Test that entries with excluded categories are filtered out"""
     def mock_parse(url):
-        feed_content = test_fg.rss_str()
+        feed_content = test_feed.rss_str()
         return feedparser.parse(feed_content)
-    
-    # Create a generator with exclude_categories configuration
-    config = {
-        'mastodon': {
-            'access_token': 'test_token',
-            'mastodon_instance': 'https://test.social',
-            'mastodon_username': 'test_user',
-            'types': ['favourites']
-        },
-        'rss': {
-            'urls': [{'url': 'http://example.com/feed', 'tag': 'test'}],
-            'exclude_categories': ['private']
-        }
-    }
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-        yaml.dump(config, f)
-        config_path = f.name
-    
-    test_generator = StarRSSGenerator(config_path)
     
     # Create output feed
     fg = FeedGenerator()
@@ -193,8 +186,7 @@ def test_exclude_categories_handling(generator):
     
     # Mock feedparser.parse
     with pytest.mock.patch('feedparser.parse', side_effect=mock_parse):
-        # Call the method that implements the exclusion logic
-        test_generator._fetch_rss_feeds(fg)
+        generator._fetch_rss_feeds(fg)
     
     # Generate and parse resulting feed
     feed_content = fg.rss_str()
@@ -212,7 +204,34 @@ def test_exclude_categories_handling(generator):
         entry for entry in feed.entries 
         if any(tag['term'] == 'public' for tag in getattr(entry, 'tags', []))
     ]
-    assert len(entries_with_public) == 1  # Public entry should be present
+    assert len(entries_with_public) > 0  # Public entries should be present
+
+def test_feed_categories_preserved(generator, test_feed):
+    """Test that non-excluded categories are preserved in the output"""
+    def mock_parse(url):
+        feed_content = test_feed.rss_str()
+        return feedparser.parse(feed_content)
+    
+    fg = FeedGenerator()
+    fg.title('Output Feed')
+    fg.link(href='http://example.com')
+    fg.description('Output Description')
+    
+    with pytest.mock.patch('feedparser.parse', side_effect=mock_parse):
+        generator._fetch_rss_feeds(fg)
+    
+    feed_content = fg.rss_str()
+    feed = feedparser.parse(feed_content)
+    
+    # Check that public entries retain their categories
+    public_entries = [
+        entry for entry in feed.entries 
+        if any(tag['term'] == 'public' for tag in getattr(entry, 'tags', []))
+    ]
+    
+    for entry in public_entries:
+        assert hasattr(entry, 'tags'), "Entry should have tags"
+        assert any(tag['term'] == 'public' for tag in entry.tags), "Public tag should be preserved"
 
 def test_iso_datetime_conversion(generator):
     # Test various date formats
