@@ -158,12 +158,12 @@ class StarRSSGenerator:
                             {k: v for k, v in d.items() if v is not None}
                             for d in entry.tags
                         ]
-                    # entry_tags have a value like [{'term': "value1"}, {'term': "value2"}, ]. if it has a term value of private, continue with the next item in the for loop. AI!
-                        
-                    fe.category(entry_tags + initial_tag)
+                    # Skip entries marked as private
+                    if any(tag.get('term') == 'private' for tag in entry_tags):
+                        continue
 
-                        
                     fe = fg.add_entry()
+                    fe.category(entry_tags + initial_tag)
                     fe.title(entry.title)
                     fe.link(href=entry.link)
                     fe.description(entry.description)
