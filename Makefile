@@ -14,8 +14,8 @@ all: help
 action:		## Run Github Actions locally, https://github.com/nektos/act
 	DOCKER_HOST=$(shell docker context inspect --format '{{.Endpoints.docker.Host}}') act schedule --secret-file .env --var-file .vars
 
-test:		## test the generation of feeds and see if it is a valid feed
-	uv run --no-dev python rss.py --limit 200 | uv run python validate_feed.py
+test:		## Run all tests
+	uv run pytest tests/
 
 titles:		## show the titles of the last 200 items
 	uv run python rss.py --limit 200 | yq eval -p=xml -o=json | jq  ".rss.channel.item[].title"
