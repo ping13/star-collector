@@ -180,7 +180,7 @@ class StarRSSGenerator:
 
                         
             except Exception as e:
-                logger.error(f"Error fetching RSS feed for {url}: {e}")
+                logger.error(f"Error fetching RSS feed for {item['url']}: {e}")
                 raise
 
         return True
