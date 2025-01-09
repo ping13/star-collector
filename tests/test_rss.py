@@ -178,9 +178,14 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     # Create test feed content
     feed_content = test_feed.rss_str()
     
-    # Instead of mocking feedparser.parse, mock the URL fetch
-    # This simulates what would happen when fetching from the RSS URL
-    mocker.patch('urllib.request.urlopen', return_value=feed_content)
+    # Create a mock response object that behaves like a file-like object
+    mock_response = mocker.Mock()
+    mock_response.read.return_value = feed_content
+    mock_response.__enter__.return_value = mock_response
+    mock_response.__exit__.return_value = None
+    
+    # Mock urlopen to return our mock response
+    mocker.patch('urllib.request.urlopen', return_value=mock_response)
     
     # Create output feed
     fg = FeedGenerator()
