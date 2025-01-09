@@ -147,14 +147,23 @@ class StarRSSGenerator:
                 )
                 
                 for entry in sorted_entries[:self.feed_item_limit+1]:
-                    # Skip entries with excluded categories
+                    # Skip entries with tags as excluded categories
                     if 'exclude_categories' in self.config['rss']:
                         if hasattr(entry, 'tags'):
-                            if any(tag.get('term') in self.config['rss']['exclude_categories'] 
-                                  for tag in entry.tags):
+                            print(entry.tags)
+                            if any(tag.get('term') in self.config['rss']['exclude_categories'] \
+                                   for tag in entry.tags):
+                                print("Found private entry!")
                                 continue
+                    print("HELLO")
+                    # now create the entry
+                    fe = fg.add_entry()
+                    fe.title(entry.title)
+                    fe.link(href=entry.link)
+                    fe.description(entry.description)
+                    fe.pubDate(entry.published)
 
-                    # first check if there are tags
+                    ## add categories with initial tag
                     initial_tag = [{'term': item['tag']}]
                     entry_tags = []
                     if hasattr(entry, "tags"):
@@ -162,13 +171,8 @@ class StarRSSGenerator:
                             {k: v for k, v in d.items() if v is not None}
                             for d in entry.tags
                         ]
-
-                    # now create the entry
-                    fe = fg.add_entry()
                     fe.category(entry_tags + initial_tag)
-                    fe.title(entry.title)
-                    fe.link(href=entry.link)
-                    fe.description(entry.description)
+
                     if hasattr(entry, "source"):
                         fe.source(entry.source)
                     else:
@@ -176,9 +180,6 @@ class StarRSSGenerator:
 
                     if hasattr(entry, "content"):
                         fe.content(entry.content)
-                    elif hasattr(entry, "description"):
-                        fe.content(entry.description)
-                        fe.pubDate(entry.published)
                     
             except Exception as e:
                 logger.error(f"Error fetching RSS feed for {item['url']}: {e}")
