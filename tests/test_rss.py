@@ -181,8 +181,10 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     # Create a mock response object that behaves like a file-like object
     mock_response = mocker.Mock()
     mock_response.read.return_value = feed_content
-    mock_response.__enter__.return_value = mock_response
-    mock_response.__exit__.return_value = None
+    
+    # Properly set up the context manager methods
+    mock_response.__enter__ = mocker.Mock(return_value=mock_response)
+    mock_response.__exit__ = mocker.Mock(return_value=None)
     
     # Mock urlopen to return our mock response
     mocker.patch('urllib.request.urlopen', return_value=mock_response)
