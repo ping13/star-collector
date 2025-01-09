@@ -173,7 +173,7 @@ def test_feed():
     
     return fg
 
-def test_exclude_categories_handling(generator, test_feed):
+def test_exclude_categories_handling(generator, test_feed, mocker):
     """Test that entries with excluded categories are filtered out"""
     def mock_parse(url):
         feed_content = test_feed.rss_str()
@@ -186,8 +186,8 @@ def test_exclude_categories_handling(generator, test_feed):
     fg.description('Output Description')
     
     # Mock feedparser.parse
-    with pytest.mock.patch('feedparser.parse', side_effect=mock_parse):
-        generator._fetch_rss_feeds(fg)
+    mocker.patch('feedparser.parse', side_effect=mock_parse)
+    generator._fetch_rss_feeds(fg)
     
     # Generate and parse resulting feed
     feed_content = fg.rss_str()
@@ -207,7 +207,7 @@ def test_exclude_categories_handling(generator, test_feed):
     ]
     assert len(entries_with_public) > 0  # Public entries should be present
 
-def test_feed_categories_preserved(generator, test_feed):
+def test_feed_categories_preserved(generator, test_feed, mocker):
     """Test that non-excluded categories are preserved in the output"""
     def mock_parse(url):
         feed_content = test_feed.rss_str()
@@ -218,8 +218,8 @@ def test_feed_categories_preserved(generator, test_feed):
     fg.link(href='http://example.com')
     fg.description('Output Description')
     
-    with pytest.mock.patch('feedparser.parse', side_effect=mock_parse):
-        generator._fetch_rss_feeds(fg)
+    mocker.patch('feedparser.parse', side_effect=mock_parse)
+    generator._fetch_rss_feeds(fg)
     
     feed_content = fg.rss_str()
     feed = feedparser.parse(feed_content)
