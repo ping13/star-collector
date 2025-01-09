@@ -176,19 +176,11 @@ def test_feed():
 def test_exclude_categories_handling(generator, test_feed, mocker):
     """Test that entries with excluded categories are filtered out"""
     # Create test feed content
+    print("Hello")
     feed_content = test_feed.rss_str()
-    
-    # Create a mock response object that behaves like a file-like object
-    mock_response = mocker.Mock()
-    mock_response.read.return_value = feed_content
-    mock_response.__enter__ = mocker.Mock(return_value=mock_response)
-    mock_response.__exit__ = mocker.Mock(return_value=None)
-    
-    # Mock urlopen to return our mock response for ALL URLs
-    urlopen_mock = mocker.patch('urllib.request.urlopen', return_value=mock_response)
-    
-    # Temporarily disable print statements
-    mocker.patch('builtins.print')
+    print(feed_content)
+    sys.exit(-1)
+
     
     # Create output feed
     fg = FeedGenerator()
@@ -219,18 +211,12 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
 
 def test_feed_categories_preserved(generator, test_feed, mocker):
     """Test that non-excluded categories are preserved in the output"""
-    original_parse = feedparser.parse  # Store the original parse function
-    
-    def mock_parse(url):
-        feed_content = test_feed.rss_str()
-        return original_parse(feed_content)  # Use the original parse function
     
     fg = FeedGenerator()
     fg.title('Output Feed')
     fg.link(href='http://example.com')
     fg.description('Output Description')
     
-    mocker.patch('feedparser.parse', side_effect=mock_parse)
     generator._fetch_rss_feeds(fg)
     
     feed_content = fg.rss_str()
