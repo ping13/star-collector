@@ -138,7 +138,6 @@ class StarRSSGenerator:
         for item in self.config["rss"]["urls"]:
             try:
                 feed = feedparser.parse(item["url"])
-                print(f"found {len(feed.entries)} items for {item['url']}")
                 # Sort entries by published date (newest first)
                 sorted_entries = sorted(
                     feed.entries,
@@ -285,7 +284,7 @@ class StarRSSGenerator:
         return fg.rss_str(pretty=True)
 
 @click.command()
-@click.option('--config', '-c', default='config.yaml', help='Path to configuration file')
+@click.option('--config', '-c', default='sc_config.yaml', help='Path to configuration file')
 @click.option('--debug/--no-debug', default=False, help='Enable debug output')
 @click.option('--output', '-o', help='Output file (optional, defaults to stdout)')
 @click.option('--limit', '-l', default=5, help='Number of feed items to include per source', type=int)

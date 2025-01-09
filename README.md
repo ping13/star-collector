@@ -22,11 +22,11 @@ Mastodon favorites and/or bookmarks and any perosnalized RSS feed you may have
 1. Clone this repository
 2. Install dependencies (using pip or your preferred package manager)
 3. Copy `.env.sample` to `.env` and configure your tokens
-4. Create a `config.yaml` (see below) and configure your settings
+4. Create a `sc_config.yaml` (see below) and configure your settings
 
 ## Configuration
 
-Create a `config.yaml` file with your settings:
+Create a `sc_config.yaml` file with your settings:
 
 ```yaml
 mastodon:
@@ -50,10 +50,10 @@ rss:
 python rss.py
 
 # With options
-python rss.py --config config.yaml --output feed.xml --limit 10 --debug
+python rss.py --config sc_config.yaml --output feed.xml --limit 10 --debug
 
 Options:
-  -c, --config TEXT                  Path to configuration file (default: config.yaml)
+  -c, --config TEXT                 Path to configuration file (default: sc_config.yaml)
   --debug / --no-debug              Enable debug output
   -o, --output TEXT                 Output file (optional, defaults to stdout)
   -l, --limit INTEGER               Number of feed items to include (default: 5)

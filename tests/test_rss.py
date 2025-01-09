@@ -64,12 +64,12 @@ def test_config_loading(sample_config):
     assert 'private' in generator.config['rss']['exclude_categories']
 
 def test_feed_item_limit():
-    generator = StarRSSGenerator('config.yaml', feed_item_limit=10)
+    generator = StarRSSGenerator('sc_config.yaml', feed_item_limit=10)
     assert generator.feed_item_limit == 10
 
 def test_invalid_config_file():
     with pytest.raises(FileNotFoundError):
-        StarRSSGenerator('nonexistent.yaml')
+        StarRSSGenerator('nonexistent_sc_config.yaml')
 
 def test_generate_feed_structure(generator, mocker):
     # Mock the network calls
