@@ -147,6 +147,22 @@ class StarRSSGenerator:
                 )
                 
                 for entry in sorted_entries[:self.feed_item_limit+1]:
+                    # first check of there are tahs
+                    initial_tag = [{'term': item['tag']}]
+                    entry_tags = [ ]
+                    if hasattr(entry, "tags"):
+                        # for some reason, feedparser generates attributes in the
+                        # tags with value None. this irritates feedgen, so I filter
+                        # the attributes with None value in here.
+                        entry_tags = [
+                            {k: v for k, v in d.items() if v is not None}
+                            for d in entry.tags
+                        ]
+                    # entry_tags have a value like [{'term': "value1"}, {'term': "value2"}, ]. if it has a term value of private, continue with the next item in the for loop. AI!
+                        
+                    fe.category(entry_tags + initial_tag)
+
+                        
                     fe = fg.add_entry()
                     fe.title(entry.title)
                     fe.link(href=entry.link)
@@ -162,18 +178,6 @@ class StarRSSGenerator:
                         fe.content(entry.description)
                         fe.pubDate(entry.published)
 
-                    initial_tag = [{'term': item['tag']}]
-                    if hasattr(entry, "tags"):
-                        # for some reason, feedparser generates attributes in the
-                        # tags with value None. this irritates feedgen, so I filter
-                        # the attributes with None value in here.
-                        filtered_tags = [
-                            {k: v for k, v in d.items() if v is not None}
-                            for d in entry.tags
-                        ]
-                        fe.category(filtered_tags + initial_tag)
-                    else:
-                        fe.category(initial_tag)
                         
             except Exception as e:
                 logger.error(f"Error fetching RSS feed for {url}: {e}")
