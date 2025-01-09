@@ -26,7 +26,7 @@ def extract_title(text):
     # Generate summary    
     result =  pipe(text,min_length = 10, max_length = 20)
     if len(result) == 0:
-        return text[80] # this is arbitrarily 
+        return text[80] # this is arbitrarily chosen
     else:
         return result[0]['summary_text'].replace("\n", " ")
 
