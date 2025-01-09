@@ -147,21 +147,21 @@ class StarRSSGenerator:
                 )
                 
                 for entry in sorted_entries[:self.feed_item_limit+1]:
-                    # first check of there are tahs
+                    # Skip entries with excluded categories
+                    if 'exclude_categories' in self.config['rss']:
+                        if hasattr(entry, 'tags'):
+                            if any(tag.get('term') in self.config['rss']['exclude_categories'] 
+                                  for tag in entry.tags):
+                                continue
+
+                    # first check if there are tags
                     initial_tag = [{'term': item['tag']}]
-                    entry_tags = [ ]
+                    entry_tags = []
                     if hasattr(entry, "tags"):
-                        # for some reason, feedparser generates attributes in the
-                        # tags with value None. this irritates feedgen, so I filter
-                        # the attributes with None value in here.
                         entry_tags = [
                             {k: v for k, v in d.items() if v is not None}
                             for d in entry.tags
                         ]
-                    # Skip entries with excluded categories
-                    if 'exclude_categories' in self.config['rss']:
-                        if any(tag.get('term') in self.config['rss']['exclude_categories'] for tag in entry_tags):
-                            continue
 
                     # now create the entry
                     fe = fg.add_entry()
@@ -179,8 +179,7 @@ class StarRSSGenerator:
                     elif hasattr(entry, "description"):
                         fe.content(entry.description)
                         fe.pubDate(entry.published)
-
-                        
+                    
             except Exception as e:
                 logger.error(f"Error fetching RSS feed for {item['url']}: {e}")
                 raise
