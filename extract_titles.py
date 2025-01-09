@@ -9,7 +9,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-MODEL= "czearing/article-title-generator"
+MODEL= "Ateeqq/news-title-generator"
 pipe = pipeline(
     "summarization",
     model=MODEL,
@@ -21,7 +21,8 @@ cache = diskcache.Cache("./title-generator.cache")
 @cache.memoize()
 def extract_title(text):
     logger.debug(f"Processing text of length: {len(text)}")
-    max_length = 20
+    min_length = 20
+    max_length = 40
 
     # Check the length of the text and only proceed only, if the text is
     # sufficently long enough to justify a title creation
@@ -30,16 +31,16 @@ def extract_title(text):
     num_tokens = len(tokens)  # Count tokens
     logger.debug(f"Number of tokens: {num_tokens}")
     
-    if num_tokens < max_length:
-        logger.info("Text too short for title generation, returning original text")
-        return text
+    if num_tokens < min_length:
+        logger.info(f"Text too short for title generation, returning original text: {text}")
+        return text.replace("\n", " ")
     
     # Generate summary    
     logger.debug("Generating title using pipeline")
     result = pipe(text, min_length=10, max_length=20)
     if len(result) == 0:
         logger.warning("Pipeline returned empty result, using fallback")
-        return text[80]  # this is arbitrarily chosen
+        return text[80].replace("\n", " ")  # this is arbitrarily chosen
     else:
         title = result[0]['summary_text'].replace("\n", " ")
         logger.info(f"Generated title: {title}")
