@@ -181,13 +181,11 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     # Create a mock response object that behaves like a file-like object
     mock_response = mocker.Mock()
     mock_response.read.return_value = feed_content
-    
-    # Properly set up the context manager methods
     mock_response.__enter__ = mocker.Mock(return_value=mock_response)
     mock_response.__exit__ = mocker.Mock(return_value=None)
     
     # Mock urlopen to return our mock response
-    mocker.patch('urllib.request.urlopen', return_value=mock_response)
+    urlopen_mock = mocker.patch('urllib.request.urlopen', return_value=mock_response)
     
     # Create output feed
     fg = FeedGenerator()
@@ -198,23 +196,24 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     # Process the feed
     generator._fetch_rss_feeds(fg)
     
-    # Generate and parse resulting feed
+    # Verify urlopen was called
+    assert urlopen_mock.called
+    
+    # Rest of the assertions...
     output_feed_content = fg.rss_str()
     output_feed = feedparser.parse(output_feed_content)
     
-    # Verify only entries without excluded categories are present
     entries_with_private = [
         entry for entry in output_feed.entries 
         if any(tag['term'] == 'private' for tag in getattr(entry, 'tags', []))
     ]
-    assert len(entries_with_private) == 0  # No entries with 'private' category should be present
+    assert len(entries_with_private) == 0
     
-    # Verify public entries are still there
     entries_with_public = [
         entry for entry in output_feed.entries 
         if any(tag['term'] == 'public' for tag in getattr(entry, 'tags', []))
     ]
-    assert len(entries_with_public) > 0  # Public entries should be present
+    assert len(entries_with_public) > 0
 
 def test_feed_categories_preserved(generator, test_feed, mocker):
     """Test that non-excluded categories are preserved in the output"""
