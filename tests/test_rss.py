@@ -175,9 +175,11 @@ def test_feed():
 
 def test_exclude_categories_handling(generator, test_feed, mocker):
     """Test that entries with excluded categories are filtered out"""
+    original_parse = feedparser.parse  # Store the original parse function
+    
     def mock_parse(url):
         feed_content = test_feed.rss_str()
-        return feedparser.parse(feed_content)
+        return original_parse(feed_content)  # Use the original parse function
     
     # Create output feed
     fg = FeedGenerator()
@@ -209,9 +211,11 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
 
 def test_feed_categories_preserved(generator, test_feed, mocker):
     """Test that non-excluded categories are preserved in the output"""
+    original_parse = feedparser.parse  # Store the original parse function
+    
     def mock_parse(url):
         feed_content = test_feed.rss_str()
-        return feedparser.parse(feed_content)
+        return original_parse(feed_content)  # Use the original parse function
     
     fg = FeedGenerator()
     fg.title('Output Feed')
