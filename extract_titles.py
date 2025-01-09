@@ -1,6 +1,13 @@
 import sys
+import logging
 import diskcache
 from transformers import pipeline, AutoTokenizer
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 MODEL= "czearing/article-title-generator"
 pipe = pipeline(
@@ -13,24 +20,41 @@ cache = diskcache.Cache("./title-generator.cache")
 
 @cache.memoize()
 def extract_title(text):
+    logger.debug(f"Processing text of length: {len(text)}")
     max_length = 20
 
     # Check the length of the text and only proceed only, if the text is
     # sufficently long enough to justify a title creation
     tokenizer = AutoTokenizer.from_pretrained(MODEL)
-    tokens = tokenizer.tokenize(text,max_length=max_length,truncation=True)  # Get tokenized text
+    tokens = tokenizer.tokenize(text, max_length=max_length, truncation=True)  # Get tokenized text
     num_tokens = len(tokens)  # Count tokens
+    logger.debug(f"Number of tokens: {num_tokens}")
+    
     if num_tokens < max_length:
+        logger.info("Text too short for title generation, returning original text")
         return text
     
     # Generate summary    
-    result =  pipe(text,min_length = 10, max_length = 20)
+    logger.debug("Generating title using pipeline")
+    result = pipe(text, min_length=10, max_length=20)
     if len(result) == 0:
-        return text[80] # this is arbitrarily chosen
+        logger.warning("Pipeline returned empty result, using fallback")
+        return text[80]  # this is arbitrarily chosen
     else:
-        return result[0]['summary_text'].replace("\n", " ")
+        title = result[0]['summary_text'].replace("\n", " ")
+        logger.info(f"Generated title: {title}")
+        return title
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
+    args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        
     text = sys.stdin.read().strip()
+    logger.debug("Reading input text from stdin")
     print(extract_title(text))
