@@ -19,7 +19,7 @@ def sample_config():
         },
         'rss': {
             'urls': [
-                {'url': 'https://test.com/feed', 'tag': 'test'},
+                {'url': 'file://test.xml', 'tag': 'test'},  # Changed to local file
             ],
             'exclude_categories': ['private', 'personal']
         }
@@ -173,15 +173,19 @@ def test_feed():
     
     return fg
 
-def test_exclude_categories_handling(generator, test_feed, mocker):
-    """Test that entries with excluded categories are filtered out"""
-    # Create test feed content
-    print("Hello")
-    feed_content = test_feed.rss_str()
-    print(feed_content)
-    sys.exit(-1)
-
+@pytest.fixture
+def test_xml_file(test_feed):
+    """Create a temporary test.xml file with our test feed content"""
+    with open('test.xml', 'wb') as f:
+        f.write(test_feed.rss_str())
     
+    yield 'test.xml'
+    
+    # Cleanup
+    os.unlink('test.xml')
+
+def test_exclude_categories_handling(generator, test_xml_file):
+    """Test that entries with excluded categories are filtered out"""
     # Create output feed
     fg = FeedGenerator()
     fg.title('Output Feed')
@@ -191,21 +195,20 @@ def test_exclude_categories_handling(generator, test_feed, mocker):
     # Process the feed
     generator._fetch_rss_feeds(fg)
     
-    # Verify urlopen was called
-    assert urlopen_mock.called
-    
+    # Parse the output feed
     output_feed_content = fg.rss_str()
     output_feed = feedparser.parse(output_feed_content)
     
+    # Verify filtering
     entries_with_private = [
         entry for entry in output_feed.entries 
-        if any(tag['term'] == 'private' for tag in getattr(entry, 'tags', []))
+        if any(tag.term == 'private' for tag in getattr(entry, 'tags', []))
     ]
     assert len(entries_with_private) == 0
     
     entries_with_public = [
         entry for entry in output_feed.entries 
-        if any(tag['term'] == 'public' for tag in getattr(entry, 'tags', []))
+        if any(tag.term == 'public' for tag in getattr(entry, 'tags', []))
     ]
     assert len(entries_with_public) > 0
 
