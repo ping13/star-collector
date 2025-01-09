@@ -17,6 +17,9 @@ action:		## Run Github Actions locally, https://github.com/nektos/act
 test:		## Run all tests
 	uv run pytest tests/
 
+validate:       ## Validate RSS feed
+	uv run --no-dev python rss.py --limit 200 | uv run python validate_feed.py
+
 titles:		## show the titles of the last 200 items
 	uv run python rss.py --limit 200 | yq eval -p=xml -o=json | jq  ".rss.channel.item[].title"
 

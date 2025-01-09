@@ -138,7 +138,7 @@ class StarRSSGenerator:
         for item in self.config["rss"]["urls"]:
             try:
                 feed = feedparser.parse(item["url"])
-
+                print(f"found {len(feed.entries)} items for {item['url']}")
                 # Sort entries by published date (newest first)
                 sorted_entries = sorted(
                     feed.entries,

@@ -19,7 +19,7 @@ def sample_config():
         },
         'rss': {
             'urls': [
-                {'url': 'file://tests/test.xml', 'tag': 'test'},  # Updated path
+                {'url': 'tests/test.xml', 'tag': 'test'},  # Updated path
             ],
             'exclude_categories': ['private', 'personal']
         }
@@ -184,18 +184,21 @@ def test_exclude_categories_handling(generator):
     
     # Process the feed
     generator._fetch_rss_feeds(fg)
+    print(generator.config["rss"])
     
     # Parse the output feed
     output_feed_content = fg.rss_str()
+    print(output_feed_content)
     output_feed = feedparser.parse(output_feed_content)
+    assert len(output_feed.entries) > 0, "Output feed should be non-empty"
     
     # Verify filtering
     entries_with_private = [
         entry for entry in output_feed.entries 
         if any(tag.term == 'private' for tag in getattr(entry, 'tags', []))
     ]
-    assert len(entries_with_private) == 0
-    
+    assert len(entries_with_private) == 0, "Still a private item in the feed"
+
     entries_with_public = [
         entry for entry in output_feed.entries 
         if any(tag.term == 'public' for tag in getattr(entry, 'tags', []))
