@@ -30,3 +30,5 @@ jobs:
 
     - name: Run tests
       run: make test
+      env:
+        ENVYAML_STRICT_DISABLE: ${{ vars.ENVYAML_STRICT_DISABLE }}
