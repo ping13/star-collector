@@ -70,7 +70,11 @@ def test_invalid_config_file():
     with pytest.raises(FileNotFoundError):
         StarRSSGenerator('nonexistent.yaml')
 
-def test_generate_feed_structure(generator):
+def test_generate_feed_structure(generator, mocker):
+    # Mock the network calls
+    mocker.patch.object(generator, '_fetch_mastodon_data', return_value=([], None))
+    mocker.patch.object(generator, '_fetch_rss_feeds', return_value=True)
+    
     feed_content = generator.generate_feed()
     # Parse the feed content
     feed = feedparser.parse(feed_content)
@@ -81,11 +85,13 @@ def test_generate_feed_structure(generator):
     assert 'description' in feed.feed
     assert 'link' in feed.feed
 
-def test_create_feed_item_from_mastodon(generator, sample_mastodon_status):
+def test_create_feed_item_from_mastodon(generator, sample_mastodon_status, mocker):
+    # Mock any potential network calls
+    mocker.patch('extract_titles.extract_title', return_value='Test Title')
+    
     from feedgen.feed import FeedGenerator
     fg = FeedGenerator()
     
-    # Test creating feed item
     success = generator._create_feed_item_from_mastodon(fg, sample_mastodon_status)
     assert success is True
     
