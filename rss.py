@@ -158,10 +158,11 @@ class StarRSSGenerator:
                             {k: v for k, v in d.items() if v is not None}
                             for d in entry.tags
                         ]
-                    # Skip entries marked as private
+                    # Skip entries with a category that are in the list self.config["rss"]["exclude_categories"] AI!
                     if any(tag.get('term') == 'private' for tag in entry_tags):
                         continue
 
+                    # now create the entry
                     fe = fg.add_entry()
                     fe.category(entry_tags + initial_tag)
                     fe.title(entry.title)
