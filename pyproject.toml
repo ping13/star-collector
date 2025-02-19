@@ -24,6 +24,7 @@ dependencies = [
     "bs4>=0.0.2",
     "pytest>=8.0.0",
     "pytest-mock>=3.12.0",
+    "tenacity>=8.2.3",
 ]
 
 [tool.uv.sources]
