@@ -25,6 +25,7 @@ dependencies = [
     "pytest>=8.0.0",
     "pytest-mock>=3.12.0",
     "tenacity>=8.2.3",
+    "discord-py>=2.5.2",
 ]
 
 [tool.uv.sources]
