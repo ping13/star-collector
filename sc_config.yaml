@@ -15,6 +15,7 @@ rss:
     #   tag: feedbin
   exclude_categories:
     - private
+    - c13n
 
   
 
