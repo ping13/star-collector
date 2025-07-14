@@ -16,6 +16,7 @@ rss:
   exclude_categories:
     - private
     - c13n
+    - c15n
 
   
 
