@@ -2,6 +2,7 @@ import sys
 import logging
 import diskcache
 from transformers import pipeline, AutoTokenizer
+from functools import lru_cache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -10,13 +11,36 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 MODEL= "Ateeqq/news-title-generator"
-pipe = pipeline(
-    "summarization",
-    model=MODEL,
-)
 
 # use cache to save time fro subseuent runs
 cache = diskcache.Cache("./title-generator.cache")
+
+
+@lru_cache(maxsize=1)
+def get_tokenizer():
+    return AutoTokenizer.from_pretrained(MODEL)
+
+
+@lru_cache(maxsize=1)
+def get_pipeline():
+    tasks = ("summarization", "text2text-generation")
+    last_error = None
+    for task in tasks:
+        try:
+            return pipeline(task, model=MODEL)
+        except KeyError as exc:
+            last_error = exc
+            logger.warning("Pipeline task %s unavailable, trying fallback", task)
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Failed to initialize %s pipeline: %s", task, exc)
+
+    raise RuntimeError(f"Could not initialize title generation pipeline for {MODEL}") from last_error
+
+
+def fallback_title(text: str) -> str:
+    normalized = " ".join(text.replace("\n", " ").split())
+    return normalized[:80]
 
 @cache.memoize()
 def extract_title(text):
@@ -26,7 +50,7 @@ def extract_title(text):
 
     # Check the length of the text and only proceed only, if the text is
     # sufficently long enough to justify a title creation
-    tokenizer = AutoTokenizer.from_pretrained(MODEL)
+    tokenizer = get_tokenizer()
     tokens = tokenizer.tokenize(text, max_length=max_length, truncation=True)  # Get tokenized text
     num_tokens = len(tokens)  # Count tokens
     logger.debug(f"Number of tokens: {num_tokens}")
@@ -37,12 +61,18 @@ def extract_title(text):
     
     # Generate summary    
     logger.debug("Generating title using pipeline")
-    result = pipe(text, min_length=10, max_length=20)
+    try:
+        pipe = get_pipeline()
+        result = pipe(text, min_length=10, max_length=20)
+    except Exception as exc:
+        logger.warning("Title generation failed, using fallback title: %s", exc)
+        return fallback_title(text)
     if len(result) == 0:
         logger.warning("Pipeline returned empty result, using fallback")
-        return text[80].replace("\n", " ")  # this is arbitrarily chosen
+        return fallback_title(text)
     else:
-        title = result[0]['summary_text'].replace("\n", " ")
+        summary = result[0].get('summary_text') or result[0].get('generated_text') or ""
+        title = summary.replace("\n", " ").strip() or fallback_title(text)
         logger.info(f"Generated title: {title}")
         return title
 
