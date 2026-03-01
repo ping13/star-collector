@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Star Collector Architecture C4</title>
+    <style>
+      :root {
+        --bg: #f3f5f8;
+        --surface: #ffffff;
+        --surface-soft: #f8fafc;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #d1d5db;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+        --shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.6rem;
+      }
+
+      .meta {
+        color: var(--muted);
+        margin: 0 0 0.75rem;
+      }
+
+      .meta-warning {
+        margin: -0.25rem 0 0.9rem;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid #f59e0b;
+        border-radius: 0.5rem;
+        background: #fffbeb;
+        color: #92400e;
+      }
+
+      .intro,
+      .system-summary {
+        margin: 0 0 0.9rem;
+      }
+
+      .intro a {
+        color: var(--accent);
+      }
+
+      .provenance {
+        margin: 1rem 0 0;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .app-shell.compact {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.9rem;
+        box-shadow: var(--shadow);
+      }
+
+      .nav-panel {
+        position: sticky;
+        top: 0.75rem;
+        padding: 0.75rem;
+        max-height: calc(100vh - 1.5rem);
+        overflow: auto;
+      }
+
+      .app-shell.compact .nav-panel {
+        display: none;
+      }
+
+      .nav-title {
+        margin: 0 0 0.5rem;
+        font-size: 0.95rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .tree,
+      .tree ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .tree ul {
+        margin-left: 0.9rem;
+        padding-left: 0.7rem;
+        border-left: 1px solid var(--border);
+      }
+
+      .tree li {
+        margin: 0.25rem 0;
+      }
+
+      .tree-group {
+        margin: 0.35rem 0 0.15rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .tree button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 0.38rem 0.55rem;
+        border: 1px solid transparent;
+        border-radius: 0.45rem;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .tree button:hover {
+        background: var(--surface-soft);
+        border-color: var(--border);
+      }
+
+      .tree button.active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+
+      .content-panel {
+        padding: 0.9rem;
+      }
+
+      .compact-controls {
+        display: none;
+      }
+
+      .app-shell.compact .compact-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .button {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 0.5rem;
+        padding: 0.4rem 0.7rem;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .button:hover {
+        border-color: var(--accent);
+      }
+
+      .switcher {
+        display: none;
+      }
+
+      .app-shell.compact .switcher {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.9rem;
+      }
+
+      .switcher .button.active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+
+      .compact-sections {
+        display: none;
+      }
+
+      .app-shell.compact .compact-sections {
+        display: block;
+      }
+
+      details.diagram-view {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: var(--surface);
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+      }
+
+      details.diagram-view summary {
+        cursor: pointer;
+        padding: 0.6rem 0.8rem;
+        font-weight: 600;
+      }
+
+      .diagram-wrap {
+        padding: 0.35rem 0.8rem 0.8rem;
+      }
+
+      .diagram-wrap img {
+        display: block;
+        width: 100%;
+        max-height: 78vh;
+        object-fit: contain;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background: #fff;
+        cursor: zoom-in;
+      }
+
+      .viewer {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .app-shell.compact .viewer {
+        display: none;
+      }
+
+      .viewer-meta {
+        display: grid;
+        gap: 0.2rem;
+      }
+
+      .breadcrumbs {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .viewer-title {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .viewer-stage {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: var(--surface-soft);
+        padding: 0.75rem;
+      }
+
+      .viewer-stage img {
+        display: block;
+        width: 100%;
+        max-height: 78vh;
+        object-fit: contain;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background: #fff;
+        cursor: zoom-in;
+      }
+
+      .empty-note {
+        color: var(--muted);
+      }
+
+      .fullscreen-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.88);
+        z-index: 1000;
+        padding: 1.5rem;
+      }
+
+      .fullscreen-overlay.open {
+        display: flex;
+      }
+
+      .fullscreen-image {
+        max-width: 100%;
+        max-height: calc(100vh - 4rem);
+        width: auto;
+        height: auto;
+        border: 1px solid #334155;
+        border-radius: 0.5rem;
+        background: #fff;
+      }
+
+      .fullscreen-close {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+      }
+
+      @media (max-width: 900px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .nav-panel {
+          position: static;
+          max-height: none;
+        }
+
+        .app-shell:not(.compact) .nav-panel {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Star Collector Architecture C4</h1>
+      <p class="meta">Interactive C4 Explorer</p>
+      <p class="meta-warning">
+        Warning: The diagrams below are auto-generated by a skill from
+        <a href="https://github.com/resilens/agentskills" target="_blank" rel="noopener noreferrer">https://github.com/resilens/agentskills</a>
+        and must be validated by a software architect who is familiar with this project.
+      </p>
+      <p class="system-summary">A tool to generate an RSS feed combining your starred/favorite content from Mastodon favorites and/or bookmarks and any perosnalized RSS feed you may have (for example Feedbin or Linkding or even GitHub)</p>
+      <p class="intro">
+        The C4 model is an easy to learn, developer friendly approach to software
+        architecture diagramming that uses multiple zoom levels to communicate
+        systems clearly. See
+        <a href="https://c4model.com/" target="_blank" rel="noopener noreferrer">The C4 model for visualising software architecture</a>.
+      </p>
+
+      <div id="app-shell" class="app-shell">
+        <aside id="nav-panel" class="panel nav-panel" aria-label="C4 hierarchy navigation">
+          <p class="nav-title">C4 Hierarchy</p>
+          <div id="tree-nav" class="tree"></div>
+        </aside>
+
+        <section class="panel content-panel">
+          <div id="compact-controls" class="compact-controls">
+            <button type="button" id="expand-all" class="button">Expand all</button>
+            <button type="button" id="collapse-all" class="button">Collapse all</button>
+          </div>
+
+          <nav id="compact-switcher" class="switcher" aria-label="Diagram view switcher"></nav>
+          <section id="compact-sections" class="compact-sections"></section>
+
+          <section id="viewer" class="viewer" aria-live="polite">
+            <div class="viewer-meta">
+              <div id="viewer-breadcrumbs" class="breadcrumbs"></div>
+              <h2 id="viewer-title" class="viewer-title"></h2>
+            </div>
+            <div class="viewer-stage">
+              <img id="viewer-image" alt="" />
+            </div>
+          </section>
+
+          <p id="empty-note" class="empty-note" hidden>No diagrams available.</p>
+        </section>
+      </div>
+      <footer class="provenance">Generated: 2026-03-01T09:30:59Z • Commit: 01a1f86 (dirty)</footer>
+    </main>
+
+    <div id="fullscreen-overlay" class="fullscreen-overlay" aria-hidden="true">
+      <button type="button" id="fullscreen-close" class="button fullscreen-close">Close</button>
+      <img id="fullscreen-image" class="fullscreen-image" alt="" />
+    </div>
+
+    <script id="explorer-model" type="application/json">
+{
+  "schemaVersion": 1,
+  "title": "Star Collector Architecture C4",
+  "compact": true,
+  "landscape": null,
+  "systems": [
+    {
+      "id": "star_collector_architecture_c4",
+      "name": "Star Collector Architecture C4",
+      "system_views": [
+        {
+          "id": "star_collector_architecture_c4__context",
+          "label": "Context",
+          "image": "star-collector-context.svg",
+          "breadcrumbs": [
+            "Star Collector Architecture C4",
+            "Context"
+          ]
+        },
+        {
+          "id": "star_collector_architecture_c4__container",
+          "label": "Container",
+          "image": "star-collector-container.svg",
+          "breadcrumbs": [
+            "Star Collector Architecture C4",
+            "Container"
+          ]
+        },
+        {
+          "id": "star_collector_architecture_c4__deployment",
+          "label": "Deployment",
+          "image": "star-collector-deployment.svg",
+          "breadcrumbs": [
+            "Star Collector Architecture C4",
+            "Deployment"
+          ]
+        }
+      ],
+      "containers": [
+        {
+          "id": "primary_container",
+          "name": "Primary Container",
+          "components": [
+            {
+              "id": "primary_container__components",
+              "label": "Components",
+              "image": "star-collector-component.svg",
+              "breadcrumbs": [
+                "Star Collector Architecture C4",
+                "Primary Container",
+                "Components"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defaultViewId": "star_collector_architecture_c4__context"
+}
+    </script>
+
+    <script>
+      (() => {
+        const modelEl = document.getElementById("explorer-model");
+        const model = JSON.parse(modelEl.textContent);
+
+        const appShell = document.getElementById("app-shell");
+        const treeNav = document.getElementById("tree-nav");
+        const compactSwitcher = document.getElementById("compact-switcher");
+        const compactSections = document.getElementById("compact-sections");
+        const compactControls = document.getElementById("compact-controls");
+        const expandAll = document.getElementById("expand-all");
+        const collapseAll = document.getElementById("collapse-all");
+        const viewer = document.getElementById("viewer");
+        const viewerBreadcrumbs = document.getElementById("viewer-breadcrumbs");
+        const viewerTitle = document.getElementById("viewer-title");
+        const viewerImage = document.getElementById("viewer-image");
+        const emptyNote = document.getElementById("empty-note");
+
+        const fullscreenOverlay = document.getElementById("fullscreen-overlay");
+        const fullscreenImage = document.getElementById("fullscreen-image");
+        const fullscreenClose = document.getElementById("fullscreen-close");
+
+        const allViews = [];
+        const viewMap = new Map();
+        let currentViewId = null;
+
+        const registerView = (view) => {
+          allViews.push(view);
+          viewMap.set(view.id, view);
+        };
+
+        if (model.landscape) registerView(model.landscape);
+        (model.systems || []).forEach((system) => {
+          (system.system_views || []).forEach(registerView);
+          (system.containers || []).forEach((container) => {
+            (container.components || []).forEach(registerView);
+          });
+        });
+
+        if (!allViews.length) {
+          emptyNote.hidden = false;
+          viewer.hidden = true;
+          return;
+        }
+
+        const setActiveButtons = () => {
+          document.querySelectorAll("[data-view-id]").forEach((el) => {
+            el.classList.toggle("active", el.dataset.viewId === currentViewId);
+          });
+        };
+
+        const selectView = (viewId) => {
+          const view = viewMap.get(viewId);
+          if (!view) return;
+          currentViewId = viewId;
+          viewerTitle.textContent = view.label;
+          viewerBreadcrumbs.textContent = (view.breadcrumbs || []).join(" > ");
+          viewerImage.src = view.image;
+          viewerImage.alt = view.label + " diagram";
+          setActiveButtons();
+
+          document.querySelectorAll("details.diagram-view").forEach((node) => {
+            node.open = node.id === "compact-" + viewId;
+          });
+        };
+
+        const openFullscreen = (img) => {
+          if (!img || !img.src) return;
+          fullscreenImage.src = img.src;
+          fullscreenImage.alt = img.alt || "";
+          fullscreenOverlay.classList.add("open");
+          fullscreenOverlay.setAttribute("aria-hidden", "false");
+        };
+
+        const closeFullscreen = () => {
+          fullscreenOverlay.classList.remove("open");
+          fullscreenOverlay.setAttribute("aria-hidden", "true");
+          fullscreenImage.removeAttribute("src");
+          fullscreenImage.alt = "";
+        };
+
+        const renderCompact = () => {
+          appShell.classList.add("compact");
+          compactSwitcher.innerHTML = "";
+          compactSections.innerHTML = "";
+
+          allViews.forEach((view, idx) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "button";
+            button.textContent = view.label;
+            button.dataset.viewId = view.id;
+            button.addEventListener("click", () => selectView(view.id));
+            compactSwitcher.appendChild(button);
+
+            const details = document.createElement("details");
+            details.className = "diagram-view";
+            details.id = "compact-" + view.id;
+            details.open = idx === 0;
+            details.addEventListener("toggle", () => {
+              if (!details.open) return;
+              document.querySelectorAll("details.diagram-view").forEach((other) => {
+                if (other !== details) other.open = false;
+              });
+              selectView(view.id);
+            });
+
+            const summary = document.createElement("summary");
+            summary.textContent = view.label;
+            const wrap = document.createElement("div");
+            wrap.className = "diagram-wrap";
+            const img = document.createElement("img");
+            img.src = view.image;
+            img.alt = view.label + " diagram";
+            img.loading = "lazy";
+            img.dataset.fullscreenTarget = "1";
+            wrap.appendChild(img);
+
+            details.appendChild(summary);
+            details.appendChild(wrap);
+            compactSections.appendChild(details);
+          });
+
+          expandAll.addEventListener("click", () => {
+            document.querySelectorAll("details.diagram-view").forEach((node) => {
+              node.open = true;
+            });
+            document.querySelectorAll("#compact-switcher .button").forEach((b) => b.classList.remove("active"));
+          });
+
+          collapseAll.addEventListener("click", () => {
+            document.querySelectorAll("details.diagram-view").forEach((node) => {
+              node.open = false;
+            });
+            document.querySelectorAll("#compact-switcher .button").forEach((b) => b.classList.remove("active"));
+          });
+        };
+
+        const makeTreeButton = (view) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = view.label;
+          button.dataset.viewId = view.id;
+          button.addEventListener("click", () => selectView(view.id));
+          return button;
+        };
+
+        const renderTree = () => {
+          appShell.classList.remove("compact");
+          compactControls.style.display = "none";
+          compactSwitcher.innerHTML = "";
+          compactSections.innerHTML = "";
+
+          const root = document.createElement("ul");
+          root.className = "tree";
+
+          if (model.landscape) {
+            const li = document.createElement("li");
+            li.appendChild(makeTreeButton(model.landscape));
+            root.appendChild(li);
+          }
+
+          (model.systems || []).forEach((system) => {
+            const li = document.createElement("li");
+            const systemLabel = document.createElement("div");
+            systemLabel.className = "tree-group";
+            systemLabel.textContent = system.name;
+            li.appendChild(systemLabel);
+
+            const sub = document.createElement("ul");
+
+            (system.system_views || []).forEach((view) => {
+              const viewLi = document.createElement("li");
+              viewLi.appendChild(makeTreeButton(view));
+              sub.appendChild(viewLi);
+            });
+
+            if ((system.containers || []).length) {
+              const containersLabelLi = document.createElement("li");
+              const containersLabel = document.createElement("div");
+              containersLabel.className = "tree-group";
+              containersLabel.textContent = "Containers";
+              containersLabelLi.appendChild(containersLabel);
+
+              const containersUl = document.createElement("ul");
+              (system.containers || []).forEach((container) => {
+                const cLi = document.createElement("li");
+                const cLabel = document.createElement("div");
+                cLabel.className = "tree-group";
+                cLabel.textContent = container.name;
+                cLi.appendChild(cLabel);
+                if ((container.components || []).length) {
+                  const compsUl = document.createElement("ul");
+                  (container.components || []).forEach((comp) => {
+                    const compLi = document.createElement("li");
+                    compLi.appendChild(makeTreeButton(comp));
+                    compsUl.appendChild(compLi);
+                  });
+                  cLi.appendChild(compsUl);
+                }
+                containersUl.appendChild(cLi);
+              });
+              containersLabelLi.appendChild(containersUl);
+              sub.appendChild(containersLabelLi);
+            }
+
+            li.appendChild(sub);
+            root.appendChild(li);
+          });
+
+          treeNav.innerHTML = "";
+          treeNav.appendChild(root);
+        };
+
+        if (model.compact) {
+          renderCompact();
+        } else {
+          renderTree();
+        }
+
+        selectView(model.defaultViewId || allViews[0].id);
+
+        document.addEventListener("click", (event) => {
+          const img = event.target.closest("img");
+          if (!img) return;
+          if (img.id === "fullscreen-image") return;
+          if (img.dataset.fullscreenTarget === "1" || img.id === "viewer-image") {
+            openFullscreen(img);
+          }
+        });
+
+        fullscreenClose.addEventListener("click", closeFullscreen);
+        fullscreenOverlay.addEventListener("click", (event) => {
+          if (event.target === fullscreenOverlay) closeFullscreen();
+        });
+        window.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && fullscreenOverlay.classList.contains("open")) {
+            closeFullscreen();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

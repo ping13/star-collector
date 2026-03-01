@@ -1,0 +1,48 @@
+@startuml star-collector-component
+title Star Collector - CLI Component View
+
+LAYOUT_LANDSCAPE()
+
+System_Ext(mastodon, "Mastodon API", "Favorites and bookmarks endpoint")
+System_Ext(rss_sources, "External RSS Sources", "Feedbin, Linkding, GitHub stars, and similar feeds")
+System_Ext(linkedin, "LinkedIn API (Future)", "Potential future source for reaction events and saved content")
+System_Ext(feed_reader, "RSS Reader / Downstream Consumer", "Consumes the merged feed")
+
+Container_Boundary(cli_boundary, "CLI Application") {
+  Component(entrypoint, "Click Entrypoint", "click", "Parses CLI options and writes output to stdout or a file")
+  Component(generator, "StarRSSGenerator", "rss.py", "Coordinates config loading, source fetches, merge logic, and feed generation")
+  Component(config_loader, "Config Loader", "EnvYAML + dotenv", "Loads sc_config.yaml and resolves secrets from environment variables")
+  Component(mastodon_client, "Mastodon Fetcher", "requests", "Calls the Mastodon API, follows pagination, and returns status payloads")
+  Component(rss_fetcher, "RSS Feed Fetcher", "feedparser", "Pulls and filters personalized RSS feeds")
+  Component(linkedin_fetcher, "LinkedIn Fetcher (Planned)", "linkedin_test.py + requests", "Prototype future adapter for LinkedIn DMA/member changelog ingestion")
+  Component(feed_builder, "Feed Builder", "feedgen", "Builds and sorts the final RSS document")
+  Component(title_extractor, "Title Extractor", "extract_titles.py", "Converts Mastodon HTML content into short titles")
+  ComponentDb(title_cache, "Title Cache", "diskcache", "Caches generated titles")
+  Component(model_runtime, "Summarization Model", "transformers + torch", "Runs local inference for title generation")
+}
+
+Rel(entrypoint, generator, "Invokes feed generation")
+Rel(generator, config_loader, "Loads configuration")
+Rel(generator, mastodon_client, "Fetches Mastodon items")
+Rel(generator, rss_fetcher, "Fetches external RSS items")
+Rel(generator, linkedin_fetcher, "Would fetch future LinkedIn items")
+Rel(generator, title_extractor, "Creates titles for Mastodon entries")
+Rel(generator, feed_builder, "Adds entries and sorts output")
+Rel(feed_builder, feed_reader, "Publishes merged feed", "RSS/XML")
+Rel(mastodon_client, mastodon, "Calls API", "HTTPS/JSON")
+Rel(rss_fetcher, rss_sources, "Reads feeds", "HTTP/RSS")
+Rel(linkedin_fetcher, linkedin, "Calls member portability APIs", "HTTPS/JSON")
+Rel(title_extractor, title_cache, "Reads/writes cached titles")
+Rel(title_extractor, model_runtime, "Runs local summarization")
+
+Lay_R(mastodon_client, generator)
+Lay_D(rss_fetcher, mastodon_client)
+Lay_R(linkedin_fetcher, mastodon_client)
+Lay_L(config_loader, generator)
+Lay_R(title_extractor, generator)
+Lay_D(feed_builder, generator)
+Lay_D(title_cache, title_extractor)
+Lay_R(model_runtime, title_extractor)
+Lay_R(feed_reader, feed_builder)
+
+@enduml

@@ -1,0 +1,38 @@
+@startuml star-collector-container
+title Star Collector - Container View
+
+LAYOUT_LANDSCAPE()
+
+Person(user, "User", "Invokes the CLI and supplies configuration")
+System_Ext(mastodon, "Mastodon API", "Favorites and bookmarks endpoint")
+System_Ext(rss_sources, "External RSS Sources", "Feedbin, Linkding, GitHub stars, and similar feeds")
+System_Ext(linkedin, "LinkedIn API (Future)", "Potential future source for reaction events and saved content")
+System_Ext(feed_reader, "RSS Reader / Downstream Consumer", "Subscribes to the merged feed")
+
+System_Boundary(star_collector_boundary, "Star Collector") {
+  Container(cli, "CLI Application", "Python + Click", "Loads config, orchestrates fetches, merges items, and writes the RSS feed")
+  Container(linkedin_fetcher, "LinkedIn Fetcher (Planned)", "Python + requests", "Future adapter for LinkedIn portability APIs and reaction-event ingestion")
+  Container(model, "Title Extraction Pipeline", "Transformers + Torch", "Generates short titles from Mastodon post content")
+  ContainerDb(cache, "Title Cache", "diskcache", "Stores generated titles to avoid repeated model inference")
+  ContainerDb(config, "Config and Secrets", "sc_config.yaml + .env", "Contains source URLs, Mastodon settings, and tokens")
+}
+
+Rel_R(user, cli, "Runs with options")
+Rel_L(cli, mastodon, "Reads favourites and bookmarks", "HTTPS/JSON")
+Rel_D(cli, rss_sources, "Parses starred entries", "HTTP/RSS")
+Rel_U(cli, linkedin_fetcher, "Would trigger future LinkedIn ingestion")
+Rel_R(linkedin_fetcher, linkedin, "Would fetch reactions and saved items", "HTTPS/JSON")
+Rel_R(cli, feed_reader, "Emits merged feed", "RSS/XML")
+Rel_U(cli, config, "Reads runtime configuration")
+Rel_R(cli, model, "Requests title generation for Mastodon content")
+Rel_D(model, cache, "Reads/writes cached titles")
+
+Lay_R(mastodon, rss_sources)
+Lay_U(linkedin, linkedin_fetcher)
+Lay_D(config, cli)
+Lay_L(linkedin_fetcher, model)
+Lay_R(model, cli)
+Lay_D(cache, model)
+Lay_D(feed_reader, cli)
+
+@enduml

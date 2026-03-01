@@ -1,0 +1,42 @@
+@startuml star-collector-deployment
+title Star Collector - Deployment View
+
+LAYOUT_LANDSCAPE()
+
+Person(user, "User", "Runs feed generation on demand or from a scheduler")
+System_Ext(mastodon, "Mastodon API", "Favorites and bookmarks endpoint")
+System_Ext(rss_sources, "External RSS Sources", "Feedbin, Linkding, GitHub stars, and similar feeds")
+System_Ext(linkedin, "LinkedIn API (Future)", "Potential future source for reaction events and saved content")
+System_Ext(feed_reader, "RSS Reader / Downstream Consumer", "Consumes the merged feed")
+
+Deployment_Node(workstation, "Local Workstation", "macOS/Linux host", "Runs the Star Collector project locally") {
+  Deployment_Node(project_dir, "Project Workspace", "uv-managed Python project", "Repository checkout with local scripts and dependencies") {
+    Container(cli, "CLI Application", "Python + Click", "Loads config, fetches source data, and writes the merged RSS feed")
+    Container(model, "Title Extraction Pipeline", "Transformers + Torch", "Runs local title generation for Mastodon content")
+    Container(linkedin_fetcher, "LinkedIn Fetcher (Planned)", "Python + requests", "Future adapter for LinkedIn portability APIs")
+    ContainerDb(cache, "Title Cache", "diskcache", "Persists generated titles between runs")
+    ContainerDb(config, "Config and Secrets", "sc_config.yaml + .env", "Local runtime config and tokens")
+    Container(storage, "Generated Feed Output", "feed.xml or stdout redirect", "RSS artifact written to disk for subscribers or publishing")
+  }
+}
+
+Rel(user, cli, "Runs manually or via cron/automation")
+Rel(cli, config, "Reads configuration")
+Rel(cli, mastodon, "Fetches favourites and bookmarks", "HTTPS/JSON")
+Rel(cli, rss_sources, "Fetches personalized RSS items", "HTTP/RSS")
+Rel(cli, model, "Requests title generation")
+Rel(model, cache, "Reads/writes cached titles")
+Rel(cli, linkedin_fetcher, "Would trigger future LinkedIn ingestion")
+Rel(linkedin_fetcher, linkedin, "Would fetch reaction events", "HTTPS/JSON")
+Rel(cli, storage, "Writes merged feed", "RSS/XML")
+Rel(feed_reader, storage, "Reads output feed", "File/HTTP publish step")
+
+Lay_R(mastodon, rss_sources)
+Lay_U(linkedin, linkedin_fetcher)
+Lay_D(storage, cli)
+Lay_R(model, cli)
+Lay_D(cache, model)
+Lay_L(config, cli)
+Lay_R(feed_reader, storage)
+
+@enduml

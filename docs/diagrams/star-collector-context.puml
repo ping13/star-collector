@@ -1,0 +1,23 @@
+@startuml star-collector-context
+title Star Collector - System Context
+
+LAYOUT_LANDSCAPE()
+
+Person(user, "User", "Runs the tool to collect stars and bookmarks into one feed")
+System(system, "Star Collector", "Local Python CLI that merges starred content into a single RSS feed")
+System_Ext(mastodon, "Mastodon API", "Provides favourites and bookmarks for the configured account")
+System_Ext(rss_sources, "External RSS Sources", "Feedbin, Linkding, GitHub stars, or other personalized feeds")
+System_Ext(linkedin, "LinkedIn API (Future)", "Potential future source for reaction events and saved content via member portability APIs")
+System_Ext(feed_reader, "RSS Reader / Downstream Consumer", "Consumes the generated consolidated feed")
+
+Rel_R(user, system, "Runs CLI, provides config and output path")
+Rel_L(system, mastodon, "Fetches favourites and bookmarks", "HTTPS/JSON")
+Rel_D(system, rss_sources, "Fetches starred feed entries", "HTTP/RSS")
+Rel_U(system, linkedin, "Could ingest future LinkedIn reactions and saves", "HTTPS/JSON")
+Rel_R(system, feed_reader, "Publishes merged RSS feed", "RSS/XML file or stdout")
+
+Lay_R(mastodon, rss_sources)
+Lay_U(linkedin, system)
+Lay_D(feed_reader, system)
+
+@enduml
