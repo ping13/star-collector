@@ -17,11 +17,6 @@ cache = diskcache.Cache("./title-generator.cache")
 
 
 @lru_cache(maxsize=1)
-def get_tokenizer():
-    return AutoTokenizer.from_pretrained(MODEL)
-
-
-@lru_cache(maxsize=1)
 def get_pipeline():
     tasks = ("summarization", "text2text-generation")
     last_error = None
@@ -50,7 +45,7 @@ def extract_title(text):
 
     # Check the length of the text and only proceed only, if the text is
     # sufficently long enough to justify a title creation
-    tokenizer = get_tokenizer()
+    tokenizer = AutoTokenizer.from_pretrained(MODEL)
     tokens = tokenizer.tokenize(text, max_length=max_length, truncation=True)  # Get tokenized text
     num_tokens = len(tokens)  # Count tokens
     logger.debug(f"Number of tokens: {num_tokens}")
