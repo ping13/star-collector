@@ -25,7 +25,7 @@ DEFAULTS = {
     "model": "anthropic/claude-haiku-5.5",
     "fallback_model": "qwen/qwen3.7-flash",
     "max_body_chars": 1500,
-    "max_new_titles_per_run": 40,
+    "max_new_titles_per_run": 100,
     "timeout": 15,
 }
 settings = dict(DEFAULTS)
@@ -115,11 +115,14 @@ def _generate(prompt: str) -> str | None:
     return None
 
 
-def extract_title(text: str, context: str = "") -> str:
-    """Return a short headline for `text`; `context` (e.g. a link card) is optional."""
+def try_extract_title(text: str, context: str = "") -> str | None:
+    """Generated headline, or None when the model could not be used.
+
+    Callers that persist titles should use this so that fallbacks are retried.
+    """
     body = " ".join(text.split())[: settings["max_body_chars"]]
     if not body:
-        return fallback_title(context)
+        return None
 
     prompt = body if not context else f"{body}\n\nLinked page: {context[:300]}"
     key = (settings["model"], PROMPT_VERSION, prompt)
@@ -129,10 +132,18 @@ def extract_title(text: str, context: str = "") -> str:
 
     title = _generate(prompt)
     if title is None:
-        return fallback_title(body)  # not cached: retry on the next run
+        return None  # not cached: retry on the next run
     cache.set(key, title)
     logger.info("Generated title: %s", title)
     return title
+
+
+def extract_title(text: str, context: str = "") -> str:
+    """Return a short headline for `text`; `context` (e.g. a link card) is optional."""
+    title = try_extract_title(text, context)
+    if title:
+        return title
+    return fallback_title(" ".join(text.split()) or context)
 
 
 if __name__ == "__main__":

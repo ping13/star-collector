@@ -28,4 +28,12 @@ rss:
 titles:
   model: anthropic/claude-haiku-5.5
   fallback_model: qwen/qwen3.7-flash
-  max_new_titles_per_run: 40
+  max_new_titles_per_run: 100
+
+# Optional: LinkedIn reactions (needs LINKEDIN_ACCESS_TOKEN, see `make linkedin-token`)
+linkedin:
+  enabled: true
+  exclude_reactions: [LIKE]
+  max_items: 50
+  state_file: build/linkedin-state.json
+  state_url: https://rss.ping13.net/linkedin-state.json

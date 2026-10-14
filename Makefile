@@ -33,3 +33,6 @@ titles:		## show the titles of the last 200 items
 
 title-bakeoff:	## Compare headline models on recent posts
 	uv run python scripts/title_bakeoff.py
+
+linkedin-token:	## Create a LinkedIn access token via OAuth and store it in .env
+	uv run python scripts/linkedin_token.py

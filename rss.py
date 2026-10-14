@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import click
@@ -16,6 +16,7 @@ from feedgen.feed import FeedGenerator
 from html2text import HTML2Text
 
 import extract_titles
+import linkedin
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -187,6 +188,25 @@ class StarRSSGenerator:
         return True
                 
 
+    def _fetch_linkedin(self, fg) -> None:
+        """Add LinkedIn reactions (see linkedin.py); never fails the feed."""
+        cfg = self.config.get('linkedin')
+        if not cfg or not cfg.get('enabled', False):
+            return
+        try:
+            items = linkedin.collect(dict(cfg))
+        except Exception as e:  # LinkedIn trouble must not break the other sources
+            logger.error(f"LinkedIn source failed: {e}")
+            return
+        for item in items[:self.feed_item_limit]:
+            fe = fg.add_entry()
+            fe.id(item['id'])
+            fe.title(item['title'])
+            fe.link(href=item['url'])
+            fe.description(item.get('text') or item['title'])
+            fe.pubDate(datetime.fromtimestamp(item['ts'] / 1000, tz=timezone.utc))
+            fe.category([{'term': 'LinkedIn'}, {'term': item['reaction'].lower()}])
+
     def _create_feed_item_from_mastodon(self, feed: FeedGenerator, status: dict):
         """Create an RSS feed item from a status"""
         
@@ -273,6 +293,9 @@ class StarRSSGenerator:
             
         # Fetch items from other RSS feeds
         self._fetch_rss_feeds(fg)
+
+        # LinkedIn reactions
+        self._fetch_linkedin(fg)
 
 
 
