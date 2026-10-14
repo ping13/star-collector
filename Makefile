@@ -14,6 +14,9 @@ all: help
 action:		## Run Github Actions locally, https://github.com/nektos/act
 	DOCKER_HOST=$(shell docker context inspect --format '{{.Endpoints.docker.Host}}') act schedule --secret-file .env --var-file .vars
 
+lint:		## Lint with ruff
+	uv run ruff check .
+
 test:		## Run all tests
 	uv run pytest tests/
 
@@ -23,8 +26,6 @@ validate:       ## Validate RSS feed
 titles:		## show the titles of the last 200 items
 	uv run python rss.py --limit 200 | yq eval -p=xml -o=json | jq  ".rss.channel.item[].title"
 
-aider:		## Start a chat with an LLM to change your code
-	uvx -p 3.12 --from aider-chat aider --architect --watch-files
 
 
 

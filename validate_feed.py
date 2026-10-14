@@ -1,6 +1,7 @@
+import sys
+
 import click
 import feedparser
-import sys
 
 
 @click.command()
@@ -13,6 +14,7 @@ def main(feedfile):
     
     if feed.bozo:
         print("Invalid RSS feed")
+        sys.exit(1)
     else:
         print("Valid RSS feed")
 

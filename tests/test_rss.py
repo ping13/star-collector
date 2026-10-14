@@ -1,12 +1,14 @@
-import pytest
-from rss import StarRSSGenerator
 import os
 import tempfile
-import yaml
-import feedparser
 from datetime import datetime, timezone
-import xml.etree.ElementTree as ET
+
+import feedparser
+import pytest
+import yaml
 from feedgen.feed import FeedGenerator
+
+from rss import StarRSSGenerator
+
 
 @pytest.fixture
 def sample_config():

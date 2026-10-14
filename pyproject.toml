@@ -1,7 +1,7 @@
 [project]
-name = "mastodon-rss"
+name = "star-collector"
 version = "0.1.0"
-description = "My Favs and Bookmarks"
+description = "RSS feed of my starred items from Mastodon and other sources"
 authors = [
     {name = "Stephan Heuel", email = "mail@ping13.net"}
 ]
@@ -17,17 +17,24 @@ dependencies = [
     "feedparser>=6.0.11",
     "python-dateutil>=2.9.0.post0",
     "envyaml>=1.10.211231",
-    "transformers",
+    "transformers>=4.50.0",
     "torch>=2.5.1",
     "html2text>=2024.2.26",
     "diskcache>=5.6.3",
-    "bs4>=0.0.2",
-    "pytest>=8.0.0",
-    "pytest-mock>=3.12.0",
+    "beautifulsoup4>=4.12.3",
     "tenacity>=8.2.3",
-    "discord-py>=2.5.2",
 ]
 
-[tool.uv.sources]
-transformers = { git = "https://github.com/huggingface/transformers.git" }
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.8.0",
+    "discord-py>=2.5.2",  # only for summarize_stars.py
+]
 
+[tool.ruff]
+extend-exclude = ["linkedin_test.py", "summarize_stars.py"]  # scratch experiments
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

@@ -39,6 +39,8 @@ ENV/
 *.cache
 *~
 .aider*
-.env
 .vars
+.pytest_cache/
+.ruff_cache/
+
 

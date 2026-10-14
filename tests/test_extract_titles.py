@@ -1,6 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from extract_titles import extract_title
+
 
 @pytest.fixture
 def mock_pipeline():

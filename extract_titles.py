@@ -1,8 +1,9 @@
-import sys
 import logging
-import diskcache
-from transformers import pipeline, AutoTokenizer
+import sys
 from functools import lru_cache
+
+import diskcache
+from transformers import AutoTokenizer, pipeline
 
 logging.basicConfig(
     level=logging.INFO,

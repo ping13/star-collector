@@ -10,14 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: default
     steps:
-    - name: Enable Debug Logging
-      run: echo "ACTIONS_RUNNER_DEBUG=true" >> $GITHUB_ENV
-      
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
 
     - name: Install uv and enable caching
-      uses: astral-sh/setup-uv@v3
+      uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
@@ -35,6 +32,9 @@ jobs:
         FEEDBIN_ID: ${{ secrets.FEEDBIN_ID }}
         LINKDING_ID: ${{ secrets.LINKDING_ID }}
         
+    - name: ✅ Validate RSS
+      run: uv run --no-dev python validate_feed.py < build/stars.rss
+
     - name: 📂 Copy RSS 
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:

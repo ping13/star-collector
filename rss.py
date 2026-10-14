@@ -1,20 +1,19 @@
-import sys
-import click
-import requests
-import logging
-from envyaml import EnvYAML
-import re
-import feedparser
-from datetime import datetime
-import dateutil
-from feedgen.feed import FeedGenerator
 import json
+import logging
 import os
-from typing import Dict, List, Optional, Tuple
+import re
+from datetime import datetime
 from urllib.parse import urlparse
-from dotenv import load_dotenv
-from html2text import html2text, HTML2Text
+
+import click
+import dateutil
+import feedparser
+import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from envyaml import EnvYAML
+from feedgen.feed import FeedGenerator
+from html2text import HTML2Text
 
 import extract_titles
 
@@ -27,7 +26,6 @@ text_maker = HTML2Text()
 text_maker.ignore_links = True
 text_maker.ignore_images = True
 
-from bs4 import BeautifulSoup
 
 def extract_urls_by_rel(html_string, rel_value="nofollow"):
     """
@@ -61,7 +59,7 @@ class StarRSSGenerator:
         self.config = self._load_config(config_file)
         self.feed_item_limit = feed_item_limit
         
-    def _load_config(self, config_file: str) -> Dict:
+    def _load_config(self, config_file: str) -> dict:
         """Load configuration from file"""
         logger.debug(f"Loading configuration from {config_file}")
         
@@ -87,7 +85,7 @@ class StarRSSGenerator:
                 
         return config
 
-    def _fetch_mastodon_data(self, url: str) -> Tuple[Optional[List], Optional[str]]:
+    def _fetch_mastodon_data(self, url: str) -> tuple[list | None, str | None]:
         """Fetch data from Mastodon API"""
         logger.debug(f"Fetching data from: {url}")
         
@@ -187,7 +185,7 @@ class StarRSSGenerator:
         return True
                 
 
-    def _create_feed_item_from_mastodon(self, feed: FeedGenerator, status: Dict):
+    def _create_feed_item_from_mastodon(self, feed: FeedGenerator, status: dict):
         """Create an RSS feed item from a status"""
         
         if status.get("visibility") != "public":
@@ -214,9 +212,9 @@ class StarRSSGenerator:
         # be. If there is a card, see
         # https://docs.joinmastodon.org/entities/PreviewCard/
         if status.get("card") and status["card"].get("url").startswith("http"):
-            entry.enclosure(status["card"]["url"], 0, f"text/html")
+            entry.enclosure(status["card"]["url"], 0, "text/html")
             if status["card"].get("image"):
-                entry.enclosure(status["card"]["image"], 0, f"image/*")
+                entry.enclosure(status["card"]["image"], 0, "image/*")
 
         # additionally, enrich content with media, if it exists
         if status.get('media_attachments'):
@@ -292,7 +290,7 @@ class StarRSSGenerator:
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False),
     default='ERROR',
     help='Set logging level')
-def main(config: str, debug: bool, output: Optional[str], limit: int, log_level: str):
+def main(config: str, debug: bool, output: str | None, limit: int, log_level: str):
     """Generate RSS feed from Mastodon favorites and bookmarks"""
     try:
         generator = StarRSSGenerator(config, feed_item_limit=limit, debug=debug, log_level=log_level)
