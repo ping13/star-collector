@@ -3,8 +3,9 @@
 
 
 A tool to generate an RSS feed combining your starred/favorite content from
-Mastodon favorites and/or bookmarks and any personalized RSS feed you may have
-(for example Feedbin or Linkding or even GitHub)
+Mastodon favorites and/or bookmarks, LinkedIn reactions and any personalized
+RSS feed you may have (for example Feedbin or Linkding or even GitHub).
+A GitHub Action rebuilds and publishes the feed every night.
 
 ## Features
 
@@ -13,7 +14,8 @@ Mastodon favorites and/or bookmarks and any personalized RSS feed you may have
 - Support for Mastodon media attachments in feed items
 - Environment variable support for sensitive tokens
 - Detailed logging options
-- Short headlines for Mastodon posts, generated via OpenRouter and cached
+- Short headlines for Mastodon and LinkedIn posts, generated via OpenRouter and cached
+- LinkedIn reactions (except plain likes) as a source, see below
 
 ## Installation
 
@@ -39,6 +41,15 @@ rss:
       tag: feedbin
     - url: https://bookmarks.ping13.net/feeds/${LINKDING_ID}/all
       tag: linkding
+
+# Optional: headline generation, see "Headline generation"
+titles:
+  model: anthropic/claude-haiku-5.5
+
+# Optional: LinkedIn reactions, see "LinkedIn reactions"
+linkedin:
+  enabled: true
+  exclude_reactions: [LIKE]
 ```
 
 ## Usage
@@ -62,8 +73,8 @@ Options:
 
 ## Ideas
 
-- [LinkedIn with unofficial Python API](https://github.com/tomquirk/linkedin-api)
 - Spotify
+- GitHub stars
 - ...
 
 ## Limitations
@@ -73,7 +84,7 @@ Options:
 
 ## LinkedIn reactions (optional)
 
-Reactions on LinkedIn posts (except plain likes) can be added as a star source
+Reactions on LinkedIn posts (except plain likes) and your reposts can be added as a star source
 through LinkedIn's Member Data Portability API (EEA/Switzerland members only):
 
 1. Create a LinkedIn developer app with the *Member Data Portability API
@@ -82,13 +93,23 @@ through LinkedIn's Member Data Portability API (EEA/Switzerland members only):
    `make linkedin-token` (once a year). Use `make linkedin-token-ci` to also
    update the GitHub secret `LINKEDIN_ACCESS_TOKEN` and the variable
    `LINKEDIN_TOKEN_EXPIRES`.
-3. Enable the `linkedin:` block in `sc_config.yaml`.
+3. Enable the `linkedin:` block in `sc_config.yaml`. `exclude_reactions` takes
+   reaction types (`LIKE`, `PRAISE`, `EMPATHY`, ...) and `REPOST`.
 
 The API only returns the last 28 days, so reactions are accumulated in
 `linkedin-state.json`, which is published next to the feed and re-read on the
-next run. Post text is read from the public post page and turned into a
+next run. The state also remembers the last processed event, so a normal run
+asks LinkedIn only for new events (one request, which keeps well below the
+daily API quota); once a week, or when the state is missing, the whole
+28-day window is read again. Post text is read from the public post page and turned into a
 headline. If the token expires, the feed still builds from the stored items and
 a warning is logged.
+
+**Token renewal.** The token is valid for about a year. When fewer than 30 days
+remain, the nightly job opens a GitHub issue ("LinkedIn token expires soon")
+and you get the usual GitHub notification. Renew with
+`make linkedin-token-ci` and close the issue. The expiry date is kept in the
+repository variable `LINKEDIN_TOKEN_EXPIRES`.
 
 ## Headline generation
 
@@ -100,7 +121,7 @@ start of the post is used). Configure it in `sc_config.yaml`:
 titles:
   model: anthropic/claude-haiku-5.5      # default
   fallback_model: qwen/qwen3.7-flash     # used if the primary fails
-  max_new_titles_per_run: 40             # cost guard
+  max_new_titles_per_run: 100            # cost guard
 ```
 
 Titles are cached in `title-generator.cache` (keyed by model, prompt and text),
@@ -111,9 +132,9 @@ GitHub Action persists the cache between runs. Compare models with
 ## Development
 
 ```bash
-make test   # run tests
+make help   # all targets, grouped by purpose
+make test   # run tests (no network)
 make lint   # ruff
-make help   # all targets
 ```
 
 Architecture diagrams live in `docs/diagrams/`.

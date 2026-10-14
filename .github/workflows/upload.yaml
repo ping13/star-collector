@@ -9,6 +9,9 @@ jobs:
     name: 🎉 Deploy RSS feed
     runs-on: ubuntu-latest
     environment: default
+    permissions:
+      contents: read
+      issues: write   # to open the LinkedIn token reminder issue
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
@@ -55,3 +58,26 @@ jobs:
         server-dir: public_html/rss/
         
 
+    - name: 🔔 Remind about LinkedIn token
+      if: always()
+      continue-on-error: true
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        EXPIRES: ${{ vars.LINKEDIN_TOKEN_EXPIRES }}
+      run: |
+        [ -n "$EXPIRES" ] || exit 0
+        days=$(( ( $(date -d "$EXPIRES" +%s) - $(date +%s) ) / 86400 ))
+        [ "$days" -lt 30 ] || exit 0
+        title="LinkedIn token expires soon: renew it"
+        open=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')
+        [ -z "$open" ] || exit 0
+        gh issue create --title "$title" --body "The LinkedIn access token expires on $EXPIRES ($days days left). Until it is renewed, LinkedIn items are served from the stored state only.
+
+        Renew it locally (opens the LinkedIn consent page, updates .env, the GitHub secret and the expiry variable):
+
+        \`\`\`bash
+        make linkedin-token-ci
+        \`\`\`
+
+        Close this issue afterwards."
