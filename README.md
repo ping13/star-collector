@@ -79,9 +79,9 @@ through LinkedIn's Member Data Portability API (EEA/Switzerland members only):
 1. Create a LinkedIn developer app with the *Member Data Portability API
    (Member)* product and add `http://localhost:8799/callback` as redirect URL.
 2. Put `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` into `.env`, then run
-   `make linkedin-token` (once a year; add `--set-secret` via
-   `uv run python scripts/linkedin_token.py --set-secret` to update the GitHub
-   secret and the `LINKEDIN_TOKEN_EXPIRES` variable as well).
+   `make linkedin-token` (once a year). Use `make linkedin-token-ci` to also
+   update the GitHub secret `LINKEDIN_ACCESS_TOKEN` and the variable
+   `LINKEDIN_TOKEN_EXPIRES`.
 3. Enable the `linkedin:` block in `sc_config.yaml`.
 
 The API only returns the last 28 days, so reactions are accumulated in

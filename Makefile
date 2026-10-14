@@ -36,3 +36,6 @@ title-bakeoff:	## Compare headline models on recent posts
 
 linkedin-token:	## Create a LinkedIn access token via OAuth and store it in .env
 	uv run python scripts/linkedin_token.py
+
+linkedin-token-ci:	## Create a LinkedIn token and update the GitHub secret and variable
+	uv run python scripts/linkedin_token.py --set-secret
