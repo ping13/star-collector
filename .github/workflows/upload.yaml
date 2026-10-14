@@ -14,10 +14,10 @@ jobs:
       issues: write   # to open the LinkedIn token reminder issue
     steps:
     - name: 🚚 Get latest code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install uv and enable caching
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
@@ -29,7 +29,7 @@ jobs:
       run: uv sync --no-dev
 
     - name: Restore title cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: title-generator.cache
         key: titles-${{ github.run_id }}
@@ -49,7 +49,7 @@ jobs:
       run: uv run --no-dev python validate_feed.py < build/stars.rss
 
     - name: 📂 Copy RSS 
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      uses: SamKirkland/FTP-Deploy-Action@v4.4.0
       with:
         server: ${{ vars.FTP_SERVER }}
         username: ${{ vars.FTP_USER }}
