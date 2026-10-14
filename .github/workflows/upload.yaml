@@ -37,6 +37,8 @@ jobs:
       env:
         MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        LINKEDIN_TOKEN_EXPIRES: ${{ vars.LINKEDIN_TOKEN_EXPIRES }}
         FEEDBIN_ID: ${{ secrets.FEEDBIN_ID }}
         LINKDING_ID: ${{ secrets.LINKDING_ID }}
         

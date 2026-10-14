@@ -71,6 +71,25 @@ Options:
 - Currently, there is no way to use the creation date of a like in Mastodon,
   see this [issue](https://github.com/mastodon/mastodon/issues/1608).
 
+## LinkedIn reactions (optional)
+
+Reactions on LinkedIn posts (except plain likes) can be added as a star source
+through LinkedIn's Member Data Portability API (EEA/Switzerland members only):
+
+1. Create a LinkedIn developer app with the *Member Data Portability API
+   (Member)* product and add `http://localhost:8799/callback` as redirect URL.
+2. Put `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` into `.env`, then run
+   `make linkedin-token` (once a year; add `--set-secret` via
+   `uv run python scripts/linkedin_token.py --set-secret` to update the GitHub
+   secret and the `LINKEDIN_TOKEN_EXPIRES` variable as well).
+3. Enable the `linkedin:` block in `sc_config.yaml`.
+
+The API only returns the last 28 days, so reactions are accumulated in
+`linkedin-state.json`, which is published next to the feed and re-read on the
+next run. Post text is read from the public post page and turned into a
+headline. If the token expires, the feed still builds from the stored items and
+a warning is logged.
+
 ## Headline generation
 
 Mastodon posts have no title, so one is generated with an LLM through
