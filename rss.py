@@ -57,6 +57,8 @@ class StarRSSGenerator:
         if debug:
             logger.setLevel(logging.DEBUG)
         self.config = self._load_config(config_file)
+        if 'titles' in self.config:
+            extract_titles.configure(dict(self.config['titles']))
         self.feed_item_limit = feed_item_limit
         
     def _load_config(self, config_file: str) -> dict:
@@ -198,8 +200,10 @@ class StarRSSGenerator:
         content = status['content'] 
         entry.content(content)
 
-        # extract title using a local transformer
-        title_text = extract_titles.extract_title(text_maker.handle(content))
+        # generate a short headline (LLM via OpenRouter, cached)
+        card = status.get("card") or {}
+        card_context = " - ".join(filter(None, [card.get("title"), card.get("description")]))
+        title_text = extract_titles.extract_title(text_maker.handle(content), context=card_context)
         assert isinstance(title_text, str), "title is not a string"
         
         entry.title(f"{title_text}")

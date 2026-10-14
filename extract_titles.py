@@ -1,87 +1,149 @@
+import argparse
 import logging
+import os
 import sys
-from functools import lru_cache
+from pathlib import Path
 
 import diskcache
-from transformers import AutoTokenizer, pipeline
+import requests
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
 
-MODEL= "Ateeqq/news-title-generator"
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+PROMPT_VERSION = 1
+MAX_TITLE_CHARS = 80
 
-# use cache to save time fro subseuent runs
-cache = diskcache.Cache("./title-generator.cache")
+SYSTEM_PROMPT = (
+    "You write tight headlines for social media posts. Reply with one headline "
+    "only: at most 10 words, same language as the post, no quotes, no trailing "
+    "period, no hashtags, no preamble. State what the post is about; do not "
+    "address the reader."
+)
+
+DEFAULTS = {
+    "model": "anthropic/claude-haiku-5.5",
+    "fallback_model": "qwen/qwen3.7-flash",
+    "max_body_chars": 1500,
+    "max_new_titles_per_run": 40,
+    "timeout": 15,
+}
+settings = dict(DEFAULTS)
+
+# generated titles are cached so that only new items cost money
+cache = diskcache.Cache(str(Path(__file__).parent / "title-generator.cache"))
+
+_new_titles = 0  # API-generated titles in this process, see max_new_titles_per_run
 
 
-@lru_cache(maxsize=1)
-def get_pipeline():
-    tasks = ("summarization", "text2text-generation")
-    last_error = None
-    for task in tasks:
-        try:
-            return pipeline(task, model=MODEL)
-        except KeyError as exc:
-            last_error = exc
-            logger.warning("Pipeline task %s unavailable, trying fallback", task)
-        except Exception as exc:
-            last_error = exc
-            logger.warning("Failed to initialize %s pipeline: %s", task, exc)
-
-    raise RuntimeError(f"Could not initialize title generation pipeline for {MODEL}") from last_error
+def configure(config: dict | None) -> None:
+    """Override defaults with the optional `titles:` block of sc_config.yaml."""
+    settings.update({k: v for k, v in (config or {}).items() if k in DEFAULTS})
 
 
 def fallback_title(text: str) -> str:
-    normalized = " ".join(text.replace("\n", " ").split())
-    return normalized[:80]
+    return _shorten(" ".join(text.split()))
 
-@cache.memoize()
-def extract_title(text):
-    logger.debug(f"Processing text of length: {len(text)}")
-    min_length = 20
-    max_length = 40
 
-    # Check the length of the text and only proceed only, if the text is
-    # sufficently long enough to justify a title creation
-    tokenizer = AutoTokenizer.from_pretrained(MODEL)
-    tokens = tokenizer.tokenize(text, max_length=max_length, truncation=True)  # Get tokenized text
-    num_tokens = len(tokens)  # Count tokens
-    logger.debug(f"Number of tokens: {num_tokens}")
-    
-    if num_tokens < min_length:
-        logger.info(f"Text too short for title generation, returning original text: {text}")
-        return text.replace("\n", " ")
-    
-    # Generate summary    
-    logger.debug("Generating title using pipeline")
-    try:
-        pipe = get_pipeline()
-        result = pipe(text, min_length=10, max_length=20)
-    except Exception as exc:
-        logger.warning("Title generation failed, using fallback title: %s", exc)
-        return fallback_title(text)
-    if len(result) == 0:
-        logger.warning("Pipeline returned empty result, using fallback")
-        return fallback_title(text)
-    else:
-        summary = result[0].get('summary_text') or result[0].get('generated_text') or ""
-        title = summary.replace("\n", " ").strip() or fallback_title(text)
-        logger.info(f"Generated title: {title}")
+def _shorten(title: str, limit: int = MAX_TITLE_CHARS) -> str:
+    title = " ".join(title.split()).strip().strip("\"'“”‘’«»").strip()
+    title = title.rstrip(".")
+    if len(title) <= limit:
         return title
+    cut = title[:limit].rsplit(" ", 1)[0] or title[:limit]
+    return cut.rstrip(" ,;:-") + "…"
+
+
+def _retryable(exc: BaseException) -> bool:
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        return exc.response.status_code == 429 or exc.response.status_code >= 500
+    return isinstance(exc, (requests.ConnectionError, requests.Timeout))
+
+
+@retry(
+    retry=retry_if_exception(_retryable),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, max=8),
+    reraise=True,
+)
+def _call_model(model: str, prompt: str, api_key: str) -> str:
+    response = requests.post(
+        API_URL,
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0,
+            "max_tokens": 100,
+            "reasoning": {"enabled": False},  # thinking would eat the token budget
+        },
+        timeout=settings["timeout"],
+    )
+    response.raise_for_status()
+    choices = response.json().get("choices") or []
+    if not choices:
+        return ""
+    return (choices[0].get("message", {}).get("content") or "").strip()
+
+
+def _generate(prompt: str) -> str | None:
+    """Return a title from the primary model, then the fallback model, else None."""
+    global _new_titles
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        logger.warning("OPENROUTER_API_KEY not set, using truncated text as title")
+        return None
+    if _new_titles >= settings["max_new_titles_per_run"]:
+        logger.warning("Title budget of %s per run reached", settings["max_new_titles_per_run"])
+        return None
+
+    _new_titles += 1
+    for model in dict.fromkeys([settings["model"], settings.get("fallback_model")]):
+        if not model:
+            continue
+        try:
+            title = _shorten(_call_model(model, prompt, api_key))
+        except requests.RequestException as exc:
+            logger.warning("Title generation with %s failed: %s", model, exc)
+            continue
+        if title:
+            return title
+        logger.warning("Model %s returned an empty title", model)
+    return None
+
+
+def extract_title(text: str, context: str = "") -> str:
+    """Return a short headline for `text`; `context` (e.g. a link card) is optional."""
+    body = " ".join(text.split())[: settings["max_body_chars"]]
+    if not body:
+        return fallback_title(context)
+
+    prompt = body if not context else f"{body}\n\nLinked page: {context[:300]}"
+    key = (settings["model"], PROMPT_VERSION, prompt)
+    cached = cache.get(key)
+    if cached:
+        return cached
+
+    title = _generate(prompt)
+    if title is None:
+        return fallback_title(body)  # not cached: retry on the next run
+    cache.set(key, title)
+    logger.info("Generated title: %s", title)
+    return title
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
-    args = parser.parse_args()
+    from dotenv import load_dotenv
 
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-        
-    text = sys.stdin.read().strip()
-    logger.debug("Reading input text from stdin")
-    print(extract_title(text))
+    load_dotenv()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--model", help="Override the model")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    if args.model:
+        settings["model"] = args.model
+    print(extract_title(sys.stdin.read().strip()))

@@ -30,3 +30,6 @@ titles:		## show the titles of the last 200 items
 
 
 
+
+title-bakeoff:	## Compare headline models on recent posts
+	uv run python scripts/title_bakeoff.py

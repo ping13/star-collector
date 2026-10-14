@@ -23,3 +23,9 @@ rss:
   
 
 
+
+# Optional: headline generation via OpenRouter (needs OPENROUTER_API_KEY)
+titles:
+  model: anthropic/claude-haiku-5.5
+  fallback_model: qwen/qwen3.7-flash
+  max_new_titles_per_run: 40
