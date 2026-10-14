@@ -240,3 +240,33 @@ def test_iso_datetime_conversion(generator):
     for input_date, expected in test_dates:
         result = generator._ensure_iso_datetime(input_date)
         assert result == expected
+
+
+def _terms(generator, status, mocker):
+    mocker.patch('extract_titles.extract_title', return_value='Test Title')
+    fg = FeedGenerator()
+    fg.title('Test Feed')
+    fg.link(href='http://example.com')
+    fg.description('Test Description')
+    assert generator._create_feed_item_from_mastodon(fg, status) is True
+    return [t.term for t in feedparser.parse(fg.rss_str()).entries[0].tags]
+
+
+def test_mastodon_hashtags_become_categories(generator, sample_mastodon_status, mocker):
+    sample_mastodon_status['tags'] = [
+        {'name': 'python', 'url': 'https://test.social/tags/python'},
+        {'name': 'AI', 'url': 'https://test.social/tags/AI'},
+        {'name': 'Python', 'url': 'https://test.social/tags/Python'},  # duplicate, other case
+        {'name': 'mastodon', 'url': 'https://test.social/tags/mastodon'},  # already there
+    ]
+    assert _terms(generator, sample_mastodon_status, mocker) == ['Mastodon', 'python', 'AI']
+
+
+def test_mastodon_without_tags_keeps_plain_category(generator, sample_mastodon_status, mocker):
+    assert _terms(generator, sample_mastodon_status, mocker) == ['Mastodon']
+
+
+def test_mastodon_tag_import_can_be_disabled(generator, sample_mastodon_status, mocker):
+    sample_mastodon_status['tags'] = [{'name': 'python'}]
+    generator.config['mastodon']['import_tags'] = False
+    assert _terms(generator, sample_mastodon_status, mocker) == ['Mastodon']

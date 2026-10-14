@@ -207,6 +207,24 @@ class StarRSSGenerator:
             fe.pubDate(datetime.fromtimestamp(item['ts'] / 1000, tz=timezone.utc))
             fe.category([{'term': 'LinkedIn'}, {'term': item['reaction'].lower()}])
 
+    def _mastodon_terms(self, status: dict) -> list[str]:
+        """Category terms for a status: 'Mastodon' plus its hashtags.
+
+        Hashtags are the author's, so `exclude_categories` (meant for your own
+        tags on bookmarks) is deliberately not applied. Disable with
+        `mastodon.import_tags: false`.
+        """
+        terms = ['Mastodon']
+        if not self.config['mastodon'].get('import_tags', True):
+            return terms
+        seen = {term.lower() for term in terms}
+        for tag in status.get('tags') or []:
+            name = (tag.get('name') or '').strip().lstrip('#')
+            if name and name.lower() not in seen:
+                seen.add(name.lower())
+                terms.append(name)
+        return terms
+
     def _create_feed_item_from_mastodon(self, feed: FeedGenerator, status: dict):
         """Create an RSS feed item from a status"""
         
@@ -230,7 +248,7 @@ class StarRSSGenerator:
         entry.source(title=f"@{status['account'].get('display_name', 'Anonymous')}", url=status['account']['url'])
         entry.link(href=status['url'])
         entry.published(dateutil.parser.isoparse(self._ensure_iso_datetime(status['created_at'])))
-        entry.category([{'term': 'Mastodon'}])
+        entry.category([{'term': term} for term in self._mastodon_terms(status)])
 
         # try to understand what the source of preview of this toot would
         # be. If there is a card, see

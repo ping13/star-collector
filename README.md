@@ -12,6 +12,7 @@ A GitHub Action rebuilds and publishes the feed every night.
 - Combines multiple star sources into a single RSS feed
 - Configurable number of items per feed
 - Support for Mastodon media attachments in feed items
+- Hashtags of Mastodon posts become feed categories (tags)
 - Environment variable support for sensitive tokens
 - Detailed logging options
 - Short headlines for Mastodon and LinkedIn posts, generated via OpenRouter and cached
@@ -33,6 +34,7 @@ mastodon:
   access_token: "your-token-here"  # Can also be set via MASTODON_ACCESS_TOKEN env var
   mastodon_instance: "https://your.instance"
   mastodon_username: "yourusername"
+  import_tags: true  # use the hashtags of a post as feed categories (default)
 
 # Optional RSS configuration
 rss:
