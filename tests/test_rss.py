@@ -270,3 +270,21 @@ def test_mastodon_tag_import_can_be_disabled(generator, sample_mastodon_status, 
     sample_mastodon_status['tags'] = [{'name': 'python'}]
     generator.config['mastodon']['import_tags'] = False
     assert _terms(generator, sample_mastodon_status, mocker) == ['Mastodon']
+
+
+def test_linkedin_items_have_a_source(generator, mocker):
+    generator.config = {'linkedin': {'enabled': True}}
+    mocker.patch('linkedin.collect', return_value=[{
+        'id': 'urn:li:activity:1', 'url': 'https://www.linkedin.com/feed/update/urn:li:activity:1/',
+        'title': 'A Headline', 'text': 'Post text', 'reaction': 'PRAISE', 'ts': 1_760_000_000_000,
+    }])
+    fg = FeedGenerator()
+    fg.title('Test Feed')
+    fg.link(href='http://example.com')
+    fg.description('Test Description')
+
+    generator._fetch_linkedin(fg)
+
+    entry = feedparser.parse(fg.rss_str()).entries[0]
+    assert entry.source.title == 'linkedin.com'
+    assert entry.source.href == 'https://www.linkedin.com/feed/update/urn:li:activity:1/'

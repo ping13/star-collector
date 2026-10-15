@@ -203,6 +203,8 @@ class StarRSSGenerator:
             fe.id(item['id'])
             fe.title(item['title'])
             fe.link(href=item['url'])
+            # like linkding items: the domain, linked, shown as "(source: ...)"
+            fe.source(title=urlparse(item['url']).netloc.removeprefix('www.'), url=item['url'])
             description = item.get('text') or item['title']
             if item.get('comment'):  # own commentary on a reshare
                 description = f"{item['comment']}\n\n{description}"
