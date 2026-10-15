@@ -8,6 +8,7 @@ post page (og:description) and turned into a headline by extract_titles.
 import json
 import logging
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timezone
@@ -94,16 +95,41 @@ POST_URN_PREFIXES = ("urn:li:activity:", "urn:li:ugcPost:", "urn:li:share:")
 
 
 def _post_urn(value) -> str | None:
-    """A post URN from a plain string or a small dict wrapping one."""
+    """A post URN from a plain string or a small dict wrapping one.
+
+    instantReposts carry e.g. {"ugcPost": "urn:li:ugcPost:1"} as repostedContent.
+    """
     if isinstance(value, dict):
-        value = value.get("urn") or value.get("id") or value.get("activity")
+        return next(filter(None, map(_post_urn, value.values())), None)
     if isinstance(value, str) and value.startswith(POST_URN_PREFIXES):
         return value
     return None
 
 
+INSTANT_REPOST_RE = re.compile(r"^urn:li:instantRepost:\((urn:li:[A-Za-z]+:\d+),\d+\)$")
+
+
+def _instant_repost_target(resource_id: str) -> str | None:
+    """Original post URN embedded in urn:li:instantRepost:(<post urn>,<id>)."""
+    match = INSTANT_REPOST_RE.match(resource_id)
+    return _post_urn(match.group(1)) if match else None
+
+
+def _reshare(activity: dict) -> tuple[str | None, str]:
+    """(original post URN, commentary) of a ugcPost; no URN for an own original post.
+
+    A reshare with commentary has ugcOrigin "RESHARE" and points at the original
+    via responseContext {"parent": ..., "root": ...}.
+    """
+    context = activity.get("responseContext") or {}
+    urn = _post_urn(context.get("root")) or _post_urn(context.get("parent"))
+    content = (activity.get("specificContent") or {}).get("com.linkedin.ugc.ShareContent") or {}
+    text = (content.get("shareCommentary") or {}).get("text") or ""
+    return urn, " ".join(text.split())
+
+
 class Resolved(NamedTuple):
-    kept: dict[str, dict]      # urn -> {reaction, ts[, repost_id]}
+    kept: dict[str, dict]      # urn -> {reaction, ts[, repost_id, comment]}
     removed: set[str]          # reactions deleted or now excluded
     reposts_removed: set[str]  # reposts that were undone
 
@@ -113,9 +139,12 @@ def resolve_events(events: list[dict], exclude: list[str],
     """Reduce changelog events to the current state of each post.
 
     Latest event per post wins; DELETE removes. Likes/reactions come from
-    `socialActions/likes`; plain reposts from `instantReposts` and are reported
-    as reaction "REPOST" (add it to `exclude` to leave reposts out). A repost
-    outranks a reaction on the same post. `known_reposts` maps the resourceId
+    `socialActions/likes`; plain reposts from `instantReposts` and reshares with
+    commentary from `ugcPosts` (kept with their "comment"). Both are reported as
+    reaction "REPOST" of the original post (add it to `exclude` to leave reposts
+    out); own original posts are ignored. A repost outranks a reaction on the
+    same post. Events by other members (e.g. their likes on your own posts,
+    which the changelog also reports) are skipped. `known_reposts` maps the resourceId
     of reposts seen in earlier runs to their post URN, so that a later DELETE
     can be matched in an incremental fetch.
     """
@@ -124,9 +153,25 @@ def resolve_events(events: list[dict], exclude: list[str],
     repost_ids = dict(known_reposts or {})  # repost resourceId -> original post URN
     reposts_removed: set[str] = set()
 
+    def add_repost(urn: str, rid: str, ts: int, comment: str = "") -> None:
+        reposts[urn] = {"reaction": "REPOST", "ts": ts, "repost_id": rid}
+        if comment:
+            reposts[urn]["comment"] = comment
+        reposts_removed.discard(urn)
+        if rid:
+            repost_ids[rid] = urn
+
+    def remove_repost(urn: str | None) -> None:
+        if urn:
+            reposts.pop(urn, None)
+            reposts_removed.add(urn)
+
     for event in sorted(events, key=lambda e: e.get("capturedAt") or e.get("processedAt") or 0):
         ts = event.get("capturedAt") or event.get("processedAt") or 0
         resource, method = event.get("resourceName"), event.get("method")
+        actor, owner = event.get("actor"), event.get("owner")
+        if actor and owner and actor != owner:
+            continue  # someone else's action on your content
 
         if resource == "socialActions/likes":
             urn = event.get("resourceId") or ""
@@ -142,16 +187,23 @@ def resolve_events(events: list[dict], exclude: list[str],
         elif resource == "instantReposts":
             rid = event.get("resourceId") or ""
             if method == "CREATE":
-                urn = _post_urn((event.get("activity") or {}).get("repostedContent"))
+                urn = (_post_urn((event.get("activity") or {}).get("repostedContent"))
+                       or _instant_repost_target(rid))
                 if urn:
-                    reposts[urn] = {"reaction": "REPOST", "ts": ts, "repost_id": rid}
-                    reposts_removed.discard(urn)
-                    if rid:
-                        repost_ids[rid] = urn
-            elif method == "DELETE" and rid in repost_ids:
-                urn = repost_ids[rid]
-                reposts.pop(urn, None)
-                reposts_removed.add(urn)
+                    add_repost(urn, rid, ts)
+            elif method == "DELETE":
+                remove_repost(repost_ids.get(rid) or _instant_repost_target(rid))
+
+        elif resource == "ugcPosts":
+            rid = event.get("resourceId") or ""
+            activity = event.get("activity") or {}
+            if method == "DELETE" or activity.get("lifecycleState") == "DELETED":
+                remove_repost(repost_ids.get(rid))
+            elif method in ("CREATE", "UPDATE"):
+                urn, comment = _reshare(activity)
+                if urn:  # own original posts are not reactions
+                    created = (activity.get("created") or {}).get("time") or ts
+                    add_repost(urn, rid, created, comment[:500])
 
     merged = {**latest, **reposts}  # a repost wins over a plain reaction
     kept = {u: v for u, v in merged.items() if not v.get("deleted") and v["reaction"] not in exclude}
@@ -160,9 +212,9 @@ def resolve_events(events: list[dict], exclude: list[str],
 
 
 def reactions_from_events(events: list[dict], exclude: list[str]) -> dict[str, dict]:
-    """Current {urn: {reaction, ts}} for a batch of events (see resolve_events)."""
+    """Current {urn: {reaction, ts[, comment]}} for a batch of events (see resolve_events)."""
     kept = resolve_events(events, exclude).kept
-    return {u: {"reaction": v["reaction"], "ts": v["ts"]} for u, v in kept.items()}
+    return {u: {k: v[k] for k in ("reaction", "ts", "comment") if k in v} for u, v in kept.items()}
 
 
 @_retry
@@ -258,8 +310,9 @@ def _apply_events(items: dict[str, dict], events: list[dict], exclude: list[str]
         if entry.get("reaction") == "REPOST" and fresh["reaction"] != "REPOST":
             continue
         entry.update(url=POST_URL.format(urn=urn), reaction=fresh["reaction"], ts=fresh["ts"])
-        if fresh.get("repost_id"):
-            entry["repost_id"] = fresh["repost_id"]
+        for key in ("repost_id", "comment"):
+            if fresh.get(key):
+                entry[key] = fresh[key]
 
 
 def _enrich(items: dict[str, dict], max_lookups: int) -> None:
@@ -277,7 +330,7 @@ def _enrich(items: dict[str, dict], max_lookups: int) -> None:
 
 
 def collect(config: dict | None) -> list[dict]:
-    """Return feed-ready LinkedIn items [{id, url, title, text, reaction, ts}].
+    """Return feed-ready LinkedIn items [{id, url, title, text, reaction, ts[, comment]}].
 
     Normally only events since the last run are fetched (one API request);
     once a week, or without usable state, the whole 28-day window is read.

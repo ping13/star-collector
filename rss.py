@@ -203,7 +203,10 @@ class StarRSSGenerator:
             fe.id(item['id'])
             fe.title(item['title'])
             fe.link(href=item['url'])
-            fe.description(item.get('text') or item['title'])
+            description = item.get('text') or item['title']
+            if item.get('comment'):  # own commentary on a reshare
+                description = f"{item['comment']}\n\n{description}"
+            fe.description(description)
             fe.pubDate(datetime.fromtimestamp(item['ts'] / 1000, tz=timezone.utc))
             fe.category([{'term': 'LinkedIn'}, {'term': item['reaction'].lower()}])
 

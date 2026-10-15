@@ -240,3 +240,96 @@ def test_failed_fetch_keeps_cursor(mocker, monkeypatch, cfg):
     mocker.patch("linkedin.fetch_events", side_effect=requests.ConnectionError("down"))
     linkedin.collect(cfg)
     assert json.load(open(cfg["state_file"]))["last_processed_at"] == NOW_MS - 5000
+
+
+ME, OTHER = "urn:li:person:me", "urn:li:person:other"
+
+
+def instant_repost(original="urn:li:ugcPost:7", rid="urn:li:instantRepost:(urn:li:ugcPost:7,100)",
+                   ts=NOW_MS, method="CREATE"):
+    """Shape of a real instantReposts event (ids synthetic)."""
+    event = {"resourceName": "instantReposts", "resourceId": rid, "method": method, "owner": ME,
+             "actor": ME, "capturedAt": ts, "processedAt": ts, "activity": {}}
+    if method == "CREATE":
+        event["activity"] = {"repostedContent": {"ugcPost": original}}
+    return event
+
+
+def ugc_post(rid="urn:li:ugcPost:50", parent=None, text="My thoughts on this", ts=NOW_MS,
+             method="CREATE"):
+    """Shape of a real ugcPosts event: an own post, or a reshare when `parent` is set."""
+    activity = {"lifecycleState": "PUBLISHED", "author": ME, "id": rid,
+                "created": {"actor": ME, "time": ts},
+                "specificContent": {"com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"attributes": [], "text": text},
+                    "media": [], "shareMediaCategory": "NONE"}},
+                "ugcOrigin": "FEED"}
+    if parent:
+        activity.update(ugcOrigin="RESHARE", responseContext={"parent": parent, "root": parent})
+    if method == "UPDATE":
+        activity["lifecycleState"] = "PUBLISHED_EDITED"
+    event = {"resourceName": "ugcPosts", "resourceId": rid, "method": method, "owner": ME,
+             "actor": ME, "capturedAt": ts, "processedAt": ts, "activity": activity}
+    if method == "DELETE":
+        event["activity"] = {}
+    return event
+
+
+def test_real_instant_repost_shape():
+    result = linkedin.reactions_from_events([instant_repost()], ["LIKE"])
+    assert result == {"urn:li:ugcPost:7": {"reaction": "REPOST", "ts": NOW_MS}}
+
+
+def test_instant_repost_target_from_resource_id():
+    # no repostedContent: fall back to the URN embedded in the resourceId
+    event = instant_repost()
+    event["activity"] = {}
+    assert list(linkedin.reactions_from_events([event], [])) == ["urn:li:ugcPost:7"]
+    # a DELETE of a repost from an earlier run is matched without stored state
+    res = linkedin.resolve_events([instant_repost(method="DELETE")], [])
+    assert res.reposts_removed == {"urn:li:ugcPost:7"}
+
+
+def test_reshare_with_commentary_is_a_repost_of_the_original():
+    events = [ugc_post("urn:li:ugcPost:50", parent="urn:li:ugcPost:7", text="  Great\n read  ")]
+    res = linkedin.resolve_events(events, ["LIKE"])
+    assert res.kept == {"urn:li:ugcPost:7": {"reaction": "REPOST", "ts": NOW_MS,
+                                             "repost_id": "urn:li:ugcPost:50", "comment": "Great read"}}
+
+
+def test_own_original_posts_are_ignored():
+    events = [ugc_post("urn:li:ugcPost:51"), ugc_post("urn:li:share:52")]
+    assert linkedin.reactions_from_events(events, []) == {}
+
+
+def test_reshare_update_keeps_creation_time_and_new_comment():
+    events = [ugc_post(parent="urn:li:ugcPost:7", text="old", ts=1),
+              ugc_post(parent="urn:li:ugcPost:7", text="edited", ts=5, method="UPDATE")]
+    events[1]["activity"]["created"]["time"] = 1
+    result = linkedin.reactions_from_events(events, [])
+    assert result == {"urn:li:ugcPost:7": {"reaction": "REPOST", "ts": 1, "comment": "edited"}}
+
+
+def test_deleted_reshare_is_removed():
+    events = [ugc_post(parent="urn:li:ugcPost:7", ts=1), ugc_post(ts=2, method="DELETE")]
+    assert linkedin.reactions_from_events(events, []) == {}
+
+
+def test_other_members_likes_on_own_posts_are_ignored():
+    mine, theirs = like("urn:li:activity:1"), like("urn:li:ugcPost:50")
+    mine.update(owner=ME, actor=ME)
+    theirs.update(owner=ME, actor=OTHER)
+    assert list(linkedin.reactions_from_events([mine, theirs], [])) == ["urn:li:activity:1"]
+
+
+def test_incremental_reshare_delete_and_comment_in_feed(mocker, monkeypatch, cfg):
+    monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
+    mocker.patch("linkedin.fetch_post_text", return_value="Original text")
+    mocker.patch("linkedin.extract_titles.try_extract_title", return_value="T")
+    fetch = mocker.patch("linkedin.fetch_events",
+                         return_value=[ugc_post(parent="urn:li:ugcPost:7", text="Worth it")])
+    [result] = linkedin.collect(cfg)
+    assert result["id"] == "urn:li:ugcPost:7" and result["comment"] == "Worth it"
+
+    fetch.return_value = [ugc_post(method="DELETE")]
+    assert linkedin.collect(cfg) == []
