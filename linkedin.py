@@ -29,6 +29,9 @@ POST_URL = "https://www.linkedin.com/feed/update/{urn}/"
 USER_AGENT = "Mozilla/5.0 (compatible; star-collector/1.0)"
 TOKEN_WARN_DAYS = 30
 FULL_REFRESH_DAYS = 7  # re-read the whole window now and then to self-heal
+# Bump when the interpretation of changelog events changes (new event types,
+# different filtering): stored cursors are then stale, so a full re-read is forced.
+PARSER_VERSION = 2
 DAY_MS = 86_400_000
 
 DEFAULTS = {
@@ -239,15 +242,17 @@ def fetch_post_text(urn: str) -> str | None:
 
 
 def _normalize_state(raw: dict) -> dict:
-    """Current format: {"items": {...}, "last_processed_at": ms, "last_full_fetch": ms}.
+    """Current format: {"items": {...}, "last_processed_at": ms, "last_full_fetch": ms,
+    "parser_version": n}.
 
     Older state files were a flat {urn: item} mapping.
     """
     if "items" in raw and isinstance(raw["items"], dict):
         return {"items": raw["items"],
                 "last_processed_at": int(raw.get("last_processed_at") or 0),
-                "last_full_fetch": int(raw.get("last_full_fetch") or 0)}
-    return {"items": raw, "last_processed_at": 0, "last_full_fetch": 0}
+                "last_full_fetch": int(raw.get("last_full_fetch") or 0),
+                "parser_version": int(raw.get("parser_version") or 0)}
+    return {"items": raw, "last_processed_at": 0, "last_full_fetch": 0, "parser_version": 0}
 
 
 def load_state(source: str | None, url: str | None = None) -> dict:
@@ -352,6 +357,7 @@ def collect(config: dict | None) -> list[dict]:
         full = (
             state["last_processed_at"] < window
             or now_ms - state["last_full_fetch"] > FULL_REFRESH_DAYS * DAY_MS
+            or state["parser_version"] != PARSER_VERSION
         )
         try:
             events = fetch_events(token, window if full else state["last_processed_at"])
@@ -365,6 +371,7 @@ def collect(config: dict | None) -> list[dict]:
             state["last_processed_at"] = max(latest, state["last_processed_at"]) or now_ms
             if full:
                 state["last_full_fetch"] = now_ms
+            state["parser_version"] = PARSER_VERSION
             _enrich(items, cfg["max_lookups_per_run"])
 
     newest = sorted(items.items(), key=lambda kv: kv[1].get("ts", 0), reverse=True)

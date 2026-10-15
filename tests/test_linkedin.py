@@ -189,8 +189,8 @@ def test_first_run_reads_full_window_then_incremental(mocker, monkeypatch, cfg):
 def test_weekly_full_refresh(mocker, monkeypatch, cfg):
     monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
     old = NOW_MS - 8 * linkedin.DAY_MS
-    linkedin.save_state({"items": {}, "last_processed_at": NOW_MS - 1000, "last_full_fetch": old},
-                        cfg["state_file"])
+    linkedin.save_state({"items": {}, "last_processed_at": NOW_MS - 1000, "last_full_fetch": old,
+                         "parser_version": linkedin.PARSER_VERSION}, cfg["state_file"])
     fetch = mocker.patch("linkedin.fetch_events", return_value=[])
     linkedin.collect(cfg)
     assert fetch.call_args.args[1] <= NOW_MS - 27 * linkedin.DAY_MS
@@ -199,7 +199,8 @@ def test_weekly_full_refresh(mocker, monkeypatch, cfg):
 def test_incremental_delete_removes_stored_item(mocker, monkeypatch, cfg):
     monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
     state = stored(**{"urn:li:activity:1": item(), "urn:li:activity:2": item()})
-    state.update(last_processed_at=NOW_MS - 1000, last_full_fetch=NOW_MS - 1000)
+    state.update(last_processed_at=NOW_MS - 1000, last_full_fetch=NOW_MS - 1000,
+                 parser_version=linkedin.PARSER_VERSION)
     linkedin.save_state(state, cfg["state_file"])
     mocker.patch("linkedin.fetch_events", return_value=[like("urn:li:activity:1", method="DELETE")])
     assert [i["id"] for i in linkedin.collect(cfg)] == ["urn:li:activity:2"]
@@ -208,7 +209,8 @@ def test_incremental_delete_removes_stored_item(mocker, monkeypatch, cfg):
 def test_like_does_not_downgrade_stored_repost(mocker, monkeypatch, cfg):
     monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
     state = stored(**{"urn:li:ugcPost:7": item("REPOST", repost_id="r1")})
-    state.update(last_processed_at=NOW_MS - 1000, last_full_fetch=NOW_MS - 1000)
+    state.update(last_processed_at=NOW_MS - 1000, last_full_fetch=NOW_MS - 1000,
+                 parser_version=linkedin.PARSER_VERSION)
     linkedin.save_state(state, cfg["state_file"])
     mocker.patch("linkedin.fetch_events", return_value=[like("urn:li:ugcPost:7", "LIKE")])
     result = linkedin.collect(cfg)
@@ -218,7 +220,8 @@ def test_like_does_not_downgrade_stored_repost(mocker, monkeypatch, cfg):
 def test_incremental_repost_delete_uses_stored_repost_id(mocker, monkeypatch, cfg):
     monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
     state = stored(**{"urn:li:ugcPost:7": item("REPOST", repost_id="r1")})
-    state.update(last_processed_at=NOW_MS - 1000, last_full_fetch=NOW_MS - 1000)
+    state.update(last_processed_at=NOW_MS - 1000, last_full_fetch=NOW_MS - 1000,
+                 parser_version=linkedin.PARSER_VERSION)
     linkedin.save_state(state, cfg["state_file"])
     mocker.patch("linkedin.fetch_events", return_value=[repost("", rid="r1", method="DELETE")])
     assert linkedin.collect(cfg) == []
@@ -235,7 +238,8 @@ def test_legacy_flat_state_is_migrated(cfg):
 def test_failed_fetch_keeps_cursor(mocker, monkeypatch, cfg):
     monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
     state = stored(**{"urn:li:activity:1": item()})
-    state.update(last_processed_at=NOW_MS - 5000, last_full_fetch=NOW_MS - 5000)
+    state.update(last_processed_at=NOW_MS - 5000, last_full_fetch=NOW_MS - 5000,
+                 parser_version=linkedin.PARSER_VERSION)
     linkedin.save_state(state, cfg["state_file"])
     mocker.patch("linkedin.fetch_events", side_effect=requests.ConnectionError("down"))
     linkedin.collect(cfg)
@@ -333,3 +337,17 @@ def test_incremental_reshare_delete_and_comment_in_feed(mocker, monkeypatch, cfg
 
     fetch.return_value = [ugc_post(method="DELETE")]
     assert linkedin.collect(cfg) == []
+
+
+def test_parser_version_change_forces_full_refresh(mocker, monkeypatch, cfg):
+    monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "t")
+    # a fresh cursor written by an older parser must not be trusted
+    linkedin.save_state({"items": {}, "last_processed_at": NOW_MS - 1000, "last_full_fetch": NOW_MS - 1000,
+                         "parser_version": linkedin.PARSER_VERSION - 1}, cfg["state_file"])
+    fetch = mocker.patch("linkedin.fetch_events", return_value=[])
+    linkedin.collect(cfg)
+    assert fetch.call_args.args[1] <= NOW_MS - 27 * linkedin.DAY_MS
+    assert json.load(open(cfg["state_file"]))["parser_version"] == linkedin.PARSER_VERSION
+
+    linkedin.collect(cfg)  # same version again: incremental
+    assert fetch.call_args.args[1] > NOW_MS - linkedin.DAY_MS
