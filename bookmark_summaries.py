@@ -303,14 +303,16 @@ def _short(text: str, limit: int = 100) -> str:
               "(default: bookmarks.days)")
 @click.option("--hours", type=int, help="Look at bookmarks added in the last N hours "
               "instead (for frequent runs)")
+@click.option("--limit", type=int, help="Summarize at most N bookmarks "
+              "(default: bookmarks.max_summaries_per_run)")
 @click.option("--summarize", "do_summarize", is_flag=True,
               help="Also fetch the pages and print their summaries (costs Kagi and OpenRouter credit)")
 @click.option("--apply", "do_apply", is_flag=True,
               help="Fetch summaries and write them to linkding (implies --summarize)")
 @click.option("--log-level", "-L", default="WARNING", show_default=True,
               type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False))
-def main(config: str, days: int | None, hours: int | None, do_summarize: bool, do_apply: bool,
-         log_level: str):
+def main(config: str, days: int | None, hours: int | None, limit: int | None,
+         do_summarize: bool, do_apply: bool, log_level: str):
     """Replace empty or generic linkding descriptions with short page summaries.
 
     Without options this is a free dry run: it lists the candidates and why they
@@ -343,7 +345,7 @@ def main(config: str, days: int | None, hours: int | None, do_summarize: bool, d
     click.echo(f"{len(bookmarks)} bookmarks, {len(candidates)} with an empty or generic "
                f"description added in the last {period} [{mode}]")
 
-    limit = settings["max_summaries_per_run"]
+    limit = limit if limit is not None else settings["max_summaries_per_run"]
     if paid and len(candidates) > limit:
         click.echo(f"Only the newest {limit} are summarized (bookmarks.max_summaries_per_run)")
     cost = 0.0
