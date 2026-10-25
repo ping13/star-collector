@@ -31,6 +31,17 @@ titles: ## list the titles of the last 200 feed items (needs yq and jq)
 title-bakeoff: ## compare headline models side by side on your 20 latest Mastodon posts (needs OPENROUTER_API_KEY)
 	uv run python scripts/title_bakeoff.py
 
+### Bookmark summaries (linkding, Kagi Extract, OpenRouter)
+.PHONY: bookmarks bookmarks-preview bookmarks-apply
+bookmarks: ## list recent bookmarks with an empty or generic description (free, changes nothing; ARGS="--days 90")
+	uv run python bookmark_summaries.py $(ARGS)
+
+bookmarks-preview: ## same, plus the summaries they would get (about 1 cent each, changes nothing)
+	uv run python bookmark_summaries.py --summarize $(ARGS)
+
+bookmarks-apply: ## write the summaries into those bookmarks (what the nightly job does)
+	uv run python bookmark_summaries.py --apply $(ARGS)
+
 ### LinkedIn token (valid ~1 year)
 .PHONY: linkedin-token linkedin-token-ci
 linkedin-token: ## create a LinkedIn token via browser consent and save it to .env (for local runs)

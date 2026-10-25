@@ -143,6 +143,39 @@ Read and write*.
 repository variable `BLOG_DISPATCH_TOKEN_EXPIRES`, the nightly job opens a
 GitHub issue ("Blog dispatch token expires soon") with the renewal steps.
 
+## Bookmark summaries (optional)
+
+linkding fills a bookmark's description from the page's meta description when
+it is saved. Some sites answer with a consent page, a login wall or an app
+shell instead (for example `m.youtube.com` links get "Auf YouTube findest du
+..."), so the feed shows no description or a generic one.
+`bookmark_summaries.py` replaces those descriptions with a 2–3 sentence
+summary: Kagi's [Extract API](https://kagi.redocly.app/) fetches the page as
+Markdown (on Kagi's servers, so CI is not served bot-check pages) and the
+OpenRouter model of the `titles:` block writes the summary. For a Hacker News
+story the linked article is summarized. Error pages, walls and junk text are
+recognized by the model and skipped.
+
+A description counts as generic if it is empty, the text of an error page
+("404 Fehler"), shared by bookmarks with different URLs, or the same as the
+site's homepage description (unless the bookmark is that homepage). Anything
+else, short notes included, is treated as written by hand and left alone.
+Bookmarks with a tag from `rss.exclude_categories` are never sent anywhere.
+
+1. Put `LINKDING_API_TOKEN` (linkding: Settings → Integrations) and
+   `KAGI_API_TOKEN` (a v1 key from the [Kagi API dashboard](https://kagi.com/api),
+   with prepaid credit) into `.env`, next to `OPENROUTER_API_KEY`.
+2. `make bookmarks` lists the candidates of the last 7 days and why they were
+   picked; nothing paid is called. `make bookmarks ARGS="--days 300"` looks
+   further back.
+3. `make bookmarks-preview` adds the summaries they would get, without writing
+   them. `make bookmarks-apply` writes them.
+
+The workflow `bookmarks.yaml` runs `--apply` every night at 01:30 UTC, before
+the feed is built, with the three keys as GitHub secrets. Settings are in the
+`bookmarks:` block of `sc_config.yaml`. A summary costs about one cent ($0.004
+for Kagi Extract plus the model); `max_summaries_per_run` caps a run.
+
 ## Development
 
 ```bash
