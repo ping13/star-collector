@@ -1,6 +1,7 @@
 on:
   schedule:
-    - cron: '04 2 * * *'  # Runs at 2:04 every day
+    - cron: '04 0-1,3-23 * * *'  # every hour at :04 ...
+    - cron: '04 2 * * *'  # ... and at 2:04, the daily run that re-checks a week of bookmarks
   workflow_dispatch:
 
 name: 🚀 Publish my stars
@@ -28,11 +29,14 @@ jobs:
       run: uv sync --no-dev
 
     - name: 📝 Fill empty or generic linkding descriptions
-      run: uv run --no-dev python bookmark_summaries.py --apply --log-level INFO
+      # hourly runs look at new bookmarks only, so pages that cannot be summarized
+      # are not retried every hour; the daily run (and manual runs) cover the last week
+      run: uv run --no-dev python bookmark_summaries.py --apply --log-level INFO $WINDOW
       env:
         LINKDING_API_TOKEN: ${{ secrets.LINKDING_API_TOKEN }}
         KAGI_API_TOKEN: ${{ secrets.KAGI_API_TOKEN }}
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        WINDOW: ${{ github.event.schedule == '04 0-1,3-23 * * *' && '--hours 3' || '' }}
 
   rss-deploy:
     name: 🎉 Deploy RSS feed
@@ -79,6 +83,10 @@ jobs:
     - name: ✅ Validate RSS
       run: uv run --no-dev python validate_feed.py < build/stars.rss
 
+    - name: 🔍 Compare with the published feed
+      id: feed
+      run: uv run --no-dev python feed_changed.py build/stars.rss https://rss.ping13.net/stars.rss >> "$GITHUB_OUTPUT"
+
     - name: 📂 Copy RSS 
       uses: SamKirkland/FTP-Deploy-Action@v4.4.0
       with:
@@ -89,6 +97,7 @@ jobs:
         server-dir: public_html/rss/
 
     - name: ⭐ Rebuild favorites page on the blog
+      if: steps.feed.outputs.changed == 'true'
       env:
         GH_TOKEN: ${{ secrets.BLOG_DISPATCH_TOKEN }}
       run: gh workflow run favorites.yaml --repo ping13/blog --ref main

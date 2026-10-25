@@ -301,13 +301,16 @@ def _short(text: str, limit: int = 100) -> str:
               help="Configuration file (reads the bookmarks: and titles: blocks)")
 @click.option("--days", type=int, help="Look at bookmarks added in the last N days "
               "(default: bookmarks.days)")
+@click.option("--hours", type=int, help="Look at bookmarks added in the last N hours "
+              "instead (for frequent runs)")
 @click.option("--summarize", "do_summarize", is_flag=True,
               help="Also fetch the pages and print their summaries (costs Kagi and OpenRouter credit)")
 @click.option("--apply", "do_apply", is_flag=True,
               help="Fetch summaries and write them to linkding (implies --summarize)")
 @click.option("--log-level", "-L", default="WARNING", show_default=True,
               type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False))
-def main(config: str, days: int | None, do_summarize: bool, do_apply: bool, log_level: str):
+def main(config: str, days: int | None, hours: int | None, do_summarize: bool, do_apply: bool,
+         log_level: str):
     """Replace empty or generic linkding descriptions with short page summaries.
 
     Without options this is a free dry run: it lists the candidates and why they
@@ -327,14 +330,18 @@ def main(config: str, days: int | None, do_summarize: bool, do_apply: bool, log_
     if paid and not openrouter_key:
         raise click.ClickException("OPENROUTER_API_KEY is not set")
 
-    days = days if days is not None else settings["days"]
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    if hours is not None:
+        window, period = timedelta(hours=hours), f"{hours} hours"
+    else:
+        days = days if days is not None else settings["days"]
+        window, period = timedelta(days=days), f"{days} days"
+    since = datetime.now(timezone.utc) - window
     base_url = settings["linkding_url"].rstrip("/")
     bookmarks = fetch_bookmarks(base_url, linkding_token)
     candidates = find_candidates(bookmarks, settings, since)
     mode = "apply" if do_apply else "summarize (no writes)" if do_summarize else "dry run"
     click.echo(f"{len(bookmarks)} bookmarks, {len(candidates)} with an empty or generic "
-               f"description added in the last {days} days [{mode}]")
+               f"description added in the last {period} [{mode}]")
 
     limit = settings["max_summaries_per_run"]
     if paid and len(candidates) > limit:

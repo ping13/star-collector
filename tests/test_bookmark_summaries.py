@@ -237,3 +237,10 @@ def test_fails_only_when_every_summary_fails(cli):
     result = run("--apply")
     assert result.exit_code == 1
     assert "failed:  Kagi rejected the API key" in result.output
+
+
+def test_hours_window(cli):
+    run, extract, summarize, update = cli
+    result = run("--hours", "36")  # bookmarks 1 (1 day old) only
+    assert result.exit_code == 0, result.output
+    assert "1 with an empty or generic description added in the last 36 hours" in result.output
