@@ -1,0 +1,22 @@
+{
+  "title": "Star Collector Architecture",
+  "readme": "../../README.md",
+  "systems": [
+    {
+      "id": "star_collector",
+      "name": "Star Collector",
+      "context": "star-collector-context.svg",
+      "container": "star-collector-container.svg",
+      "deployment": "star-collector-deployment.svg",
+      "sequences": [
+        {"id": "hourly_run", "name": "Hourly run", "diagram": "star-collector-sequence-hourly.svg"}
+      ],
+      "containers": [
+        {"id": "feed_generator", "name": "Feed generator",
+         "components": [{"id": "feed_generator_components", "name": "Feed generator components", "diagram": "star-collector-component.svg"}]},
+        {"id": "bookmark_summarizer", "name": "Bookmark summarizer",
+         "components": [{"id": "bookmark_summarizer_components", "name": "Bookmark summarizer components", "diagram": "star-collector-summarizer-component.svg"}]}
+      ]
+    }
+  ]
+}

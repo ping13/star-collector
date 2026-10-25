@@ -1,42 +1,41 @@
 @startuml star-collector-deployment
 title Star Collector - Deployment View
 
-LAYOUT_LANDSCAPE()
+!$NODE_TYPE_MAX_CHAR_WIDTH = 28
+!$NODE_DESCR_MAX_CHAR_WIDTH = 32
 
-Person(user, "User", "Runs feed generation on demand or from a scheduler")
-System_Ext(mastodon, "Mastodon API", "Favorites and bookmarks endpoint")
-System_Ext(rss_sources, "External RSS Sources", "Feedbin, Linkding, GitHub stars, and similar feeds")
-System_Ext(linkedin, "LinkedIn API (Future)", "Potential future source for reaction events and saved content")
-System_Ext(feed_reader, "RSS Reader / Downstream Consumer", "Consumes the merged feed")
+System_Ext(linkding, "linkding", "Self-hosted at bookmarks.ping13.net: RSS feed, REST API")
+System_Ext(apis, "External APIs", "Mastodon, LinkedIn, Kagi Extract, OpenRouter, Hacker News")
 
-Deployment_Node(workstation, "Local Workstation", "macOS/Linux host", "Runs the Star Collector project locally") {
-  Deployment_Node(project_dir, "Project Workspace", "uv-managed Python project", "Repository checkout with local scripts and dependencies") {
-    Container(cli, "CLI Application", "Python + Click", "Loads config, fetches source data, and writes the merged RSS feed")
-    Container(model, "Title Extraction Pipeline", "Transformers + Torch", "Runs local title generation for Mastodon content")
-    Container(linkedin_fetcher, "LinkedIn Fetcher (Planned)", "Python + requests", "Future adapter for LinkedIn portability APIs")
-    ContainerDb(cache, "Title Cache", "diskcache", "Persists generated titles between runs")
-    ContainerDb(config, "Config and Secrets", "sc_config.yaml + .env", "Local runtime config and tokens")
-    Container(storage, "Generated Feed Output", "feed.xml or stdout redirect", "RSS artifact written to disk for subscribers or publishing")
+Deployment_Node(github, "GitHub", "github.com") {
+  Deployment_Node(sc_repo, "ping13/star-collector", "Public repository, Actions") {
+    Deployment_Node(run, "Publish my stars run", "ubuntu-latest, hourly at :04 + manual") {
+      Container(summarizer, "Bookmark summarizer", "Job 1: summarize-bookmarks", "bookmark_summaries.py --apply")
+      Container(generator, "Feed generator", "Job 2: rss-deploy", "rss.py, validate, compare, FTP upload, blog dispatch")
+    }
+    ContainerDb(cache, "Title cache", "GitHub Actions cache", "Restored and saved by every feed run")
+    ContainerDb(secrets, "Secrets and variables", "Environment default", "API tokens, FTP password, token expiry dates")
+  }
+  Deployment_Node(blog_repo, "ping13/blog", "Private repository, Actions") {
+    Container(favorites, "Favorites workflow", "Pelican, favorites.yaml", "Builds and uploads only favorites/index.html")
   }
 }
 
-Rel(user, cli, "Runs manually or via cron/automation")
-Rel(cli, config, "Reads configuration")
-Rel(cli, mastodon, "Fetches favourites and bookmarks", "HTTPS/JSON")
-Rel(cli, rss_sources, "Fetches personalized RSS items", "HTTP/RSS")
-Rel(cli, model, "Requests title generation")
-Rel(model, cache, "Reads/writes cached titles")
-Rel(cli, linkedin_fetcher, "Would trigger future LinkedIn ingestion")
-Rel(linkedin_fetcher, linkedin, "Would fetch reaction events", "HTTPS/JSON")
-Rel(cli, storage, "Writes merged feed", "RSS/XML")
-Rel(feed_reader, storage, "Reads output feed", "File/HTTP publish step")
+Deployment_Node(cyon, "Web hosting", "cyon.ch, FTP") {
+  ContainerDb(feed, "rss.ping13.net", "public_html/rss", "stars.rss, linkedin-state.json")
+  ContainerDb(site, "blog.heuel.org", "public_html/blog", "Static blog, favorites page")
+}
 
-Lay_R(mastodon, rss_sources)
-Lay_U(linkedin, linkedin_fetcher)
-Lay_D(storage, cli)
-Lay_R(model, cli)
-Lay_D(cache, model)
-Lay_L(config, cli)
-Lay_R(feed_reader, storage)
+
+summarizer --> linkding : reads bookmarks,\nwrites descriptions
+summarizer --> apis : Kagi, OpenRouter, HN
+generator --> linkding : reads the RSS feed
+generator --> apis : Mastodon, LinkedIn,\nOpenRouter
+generator --> cache : reads/writes
+generator --> feed : uploads (FTP)
+generator --> favorites : workflow_dispatch\nif the feed changed
+favorites --> feed : reads stars.rss
+favorites --> site : uploads favorites page (FTP)
+run ..> secrets : uses
 
 @enduml

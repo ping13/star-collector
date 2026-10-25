@@ -1,0 +1,29 @@
+@startuml star-collector-sequence-hourly
+title Star Collector - Hourly Run
+SHOW_INDEX()
+
+Container(actions, "Publish workflow", "GitHub Actions", "upload.yaml")
+Container(summarizer, "Bookmark summarizer", "Python")
+System_Ext(linkding, "linkding")
+System_Ext(kagi, "Kagi Extract API")
+System_Ext(openrouter, "OpenRouter")
+Container(generator, "Feed generator", "Python")
+System_Ext(sources, "Mastodon, LinkedIn")
+System_Ext(webhost, "Web host")
+System_Ext(blog, "Blog favorites workflow")
+
+Rel(actions, summarizer, "Job 1: --apply, last 3 hours (a week at 02:04)")
+Rel(summarizer, linkding, "List bookmarks")
+Rel(summarizer, kagi, "Extract each candidate page")
+Rel(summarizer, openrouter, "Summarize the page, or SKIP")
+Rel(summarizer, linkding, "PATCH description")
+Rel(actions, generator, "Job 2: build stars.rss, also if job 1 failed")
+Rel(generator, sources, "Read favourites and reactions")
+Rel(generator, linkding, "Read the bookmarks feed with the new descriptions")
+Rel(generator, openrouter, "Headlines for new posts (cached otherwise)")
+Rel(actions, webhost, "Compare items with the published stars.rss")
+Rel(actions, webhost, "Upload stars.rss and linkedin-state.json (FTP)")
+Rel(actions, blog, "workflow_dispatch, only if the items changed")
+Rel(blog, webhost, "Read stars.rss, upload favorites/index.html")
+
+@enduml

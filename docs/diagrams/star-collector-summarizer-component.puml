@@ -1,0 +1,34 @@
+@startuml star-collector-summarizer-component
+title Star Collector - Bookmark Summarizer Components
+
+System_Ext(linkding, "linkding", "REST API: bookmarks")
+System_Ext(sites, "Bookmarked sites", "Homepages, for their meta description")
+System_Ext(hn, "Hacker News API", "Item -> story URL")
+System_Ext(kagi, "Kagi Extract API", "Page as Markdown")
+System_Ext(openrouter, "OpenRouter", "titles.model, fallback model")
+
+Container_Boundary(summarizer, "Bookmark summarizer (bookmark_summaries.py)") {
+  Component(cli, "CLI", "click", "Dry run by default; options to print or apply summaries, and to set the time window and limit")
+  Component(client, "linkding client", "requests", "Lists all bookmarks, patches a description")
+  Component(finder, "Candidate finder", "find_candidates", "Recent bookmarks whose description is empty, an error text, shared by other URLs or the homepage text; skips excluded tags")
+  Component(normalizer, "URL normalizer", "normalize_url", "Desktop hosts, decoded paths, no tracking parameters")
+  Component(resolver, "HN resolver", "hn_article_url", "Replaces a Hacker News story with the article it links to")
+  Component(extractor, "Page extractor", "extract_page", "Fetches the page through Kagi, strips links and images")
+  Component(llm, "Summarizer", "summarize", "2-3 sentences in the configured language, or SKIP for error pages, walls and junk")
+}
+
+Rel(cli, client, "Fetches bookmarks")
+Rel(cli, finder, "Selects candidates")
+Rel(finder, normalizer, "Compares URLs")
+Rel(cli, resolver, "Resolves the URL to fetch")
+Rel(cli, extractor, "Fetches the page")
+Rel(cli, llm, "Summarizes the page")
+Rel(cli, client, "Writes the summary when applying")
+
+Rel(client, linkding, "GET and PATCH /api/bookmarks/", "HTTPS/JSON")
+Rel(finder, sites, "Reads the homepage description", "HTTPS")
+Rel(resolver, hn, "GET item", "HTTPS/JSON")
+Rel(extractor, kagi, "POST /api/v1/extract", "HTTPS/JSON")
+Rel(llm, openrouter, "Chat completion", "HTTPS/JSON")
+
+@enduml

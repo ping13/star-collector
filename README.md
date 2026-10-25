@@ -5,7 +5,7 @@
 A tool to generate an RSS feed combining your starred/favorite content from
 Mastodon favorites and/or bookmarks, LinkedIn reactions and any personalized
 RSS feed you may have (for example Feedbin or Linkding or even GitHub).
-A GitHub Action rebuilds and publishes the feed every night.
+A GitHub Action rebuilds and publishes the feed every hour.
 
 ## Features
 
@@ -108,7 +108,7 @@ headline. If the token expires, the feed still builds from the stored items and
 a warning is logged.
 
 **Token renewal.** The token is valid for about a year. When fewer than 30 days
-remain, the nightly job opens a GitHub issue ("LinkedIn token expires soon")
+remain, the feed job opens a GitHub issue ("LinkedIn token expires soon")
 and you get the usual GitHub notification. Renew with
 `make linkedin-token-ci` and close the issue. The expiry date is kept in the
 repository variable `LINKEDIN_TOKEN_EXPIRES`.
@@ -140,7 +140,7 @@ which rebuilds and uploads only the blog's favorites page. This needs the secret
 Read and write*.
 
 **Token renewal.** When fewer than 30 days remain until the date in the
-repository variable `BLOG_DISPATCH_TOKEN_EXPIRES`, the nightly job opens a
+repository variable `BLOG_DISPATCH_TOKEN_EXPIRES`, the feed job opens a
 GitHub issue ("Blog dispatch token expires soon") with the renewal steps.
 
 ## Bookmark summaries (optional)
