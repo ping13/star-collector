@@ -171,8 +171,10 @@ Bookmarks with a tag from `rss.exclude_categories` are never sent anywhere.
 3. `make bookmarks-preview` adds the summaries they would get, without writing
    them. `make bookmarks-apply` writes them.
 
-The workflow `bookmarks.yaml` runs `--apply` every night at 01:30 UTC, before
-the feed is built, with the three keys as GitHub secrets. Settings are in the
+Every night, the feed workflow `upload.yaml` runs `--apply` as its first job,
+with the three keys as GitHub secrets; the feed is built afterwards, also when
+summarizing failed. `bookmarks.yaml` runs the same step on its own, for manual
+runs. Settings are in the
 `bookmarks:` block of `sc_config.yaml`. A summary costs about one cent ($0.004
 for Kagi Extract plus the model); `max_summaries_per_run` caps a run.
 

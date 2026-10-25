@@ -1,7 +1,5 @@
 on:
-  schedule:
-    - cron: '30 1 * * *'  # Runs at 1:30 every day, before the feed is built
-  workflow_dispatch:
+  workflow_dispatch:  # manual runs only; nightly, this runs as the first job of upload.yaml
 
 name: 📝 Summarize bookmarks
 jobs:

@@ -5,8 +5,39 @@ on:
 
 name: 🚀 Publish my stars
 jobs:
+  summarize-bookmarks:
+    name: 📝 Summarize bookmarks
+    runs-on: ubuntu-latest
+    environment: default
+    permissions:
+      contents: read
+    steps:
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v7
+
+    - name: Install uv and enable caching
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install the project
+      run: uv sync --no-dev
+
+    - name: 📝 Fill empty or generic linkding descriptions
+      run: uv run --no-dev python bookmark_summaries.py --apply --log-level INFO
+      env:
+        LINKDING_API_TOKEN: ${{ secrets.LINKDING_API_TOKEN }}
+        KAGI_API_TOKEN: ${{ secrets.KAGI_API_TOKEN }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
   rss-deploy:
     name: 🎉 Deploy RSS feed
+    needs: summarize-bookmarks
+    if: ${{ !cancelled() }}  # publish the feed even if summarizing failed
     runs-on: ubuntu-latest
     environment: default
     permissions:
