@@ -57,12 +57,12 @@ SYSTEM_PROMPT = (
     "You write descriptions for a public list of bookmarked web pages. Given a page's "
     "title, URL and extracted content, write 2-3 sentences in {language} on what the page "
     "is about and its main point or findings, in at most 60 words. Open with the subject "
-    "itself, never with a description of the page: write \"Git's --fixup and --autosquash "
-    "can amend any past commit ...\", not \"This article explains how ...\", and "
-    "\"3Blue1Brown argues that ...\", not \"The page is a YouTube video ...\". Plain text, "
-    "no markdown, no preamble. If the content is "
-    "an error page, a cookie, login or paywall notice, a bot check, or text that does not "
-    f"match the title, reply with {SKIP} only."
+    "itself, never with a description of the page: write \"SQLite's WAL mode lets readers "
+    "...\", not \"This article explains how ...\", and \"A physicist argues that ...\", not "
+    "\"The page is a YouTube video ...\". Plain text, no markdown, no preamble. A forum "
+    "comment or discussion is fine: summarize what it says. Only if the content is an "
+    "error page, a cookie, login or paywall notice, a bot check, or nonsense unrelated to "
+    f"the title, reply with {SKIP} only."
 )
 
 # mobile hosts that serve app shells instead of real pages to scrapers
