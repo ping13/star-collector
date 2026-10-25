@@ -56,7 +56,11 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./build/
         server-dir: public_html/rss/
-        
+
+    - name: ⭐ Rebuild favorites page on the blog
+      env:
+        GH_TOKEN: ${{ secrets.BLOG_DISPATCH_TOKEN }}
+      run: gh workflow run favorites.yaml --repo ping13/blog
 
     - name: 🔔 Remind about LinkedIn token
       if: always()
