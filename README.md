@@ -131,6 +131,18 @@ so only new posts cost money: typically well under USD 0.10 per month. The
 GitHub Action persists the cache between runs. Compare models with
 `make title-bakeoff`.
 
+## Blog favorites page
+
+After the nightly job has published the feed, it starts the `favorites.yaml`
+workflow in [ping13/blog](https://github.com/ping13/blog), which rebuilds and
+uploads only the blog's favorites page. This needs the secret
+`BLOG_DISPATCH_TOKEN`: a fine-grained token for `ping13/blog` with *Actions:
+Read and write*.
+
+**Token renewal.** When fewer than 30 days remain until the date in the
+repository variable `BLOG_DISPATCH_TOKEN_EXPIRES`, the nightly job opens a
+GitHub issue ("Blog dispatch token expires soon") with the renewal steps.
+
 ## Development
 
 ```bash

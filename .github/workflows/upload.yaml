@@ -62,6 +62,32 @@ jobs:
         GH_TOKEN: ${{ secrets.BLOG_DISPATCH_TOKEN }}
       run: gh workflow run favorites.yaml --repo ping13/blog
 
+    - name: 🔔 Remind about blog dispatch token
+      if: always()
+      continue-on-error: true
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        EXPIRES: ${{ vars.BLOG_DISPATCH_TOKEN_EXPIRES }}
+      run: |
+        [ -n "$EXPIRES" ] || exit 0
+        days=$(( ( $(date -d "$EXPIRES" +%s) - $(date +%s) ) / 86400 ))
+        [ "$days" -lt 30 ] || exit 0
+        title="Blog dispatch token expires soon: renew it"
+        open=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')
+        [ -z "$open" ] || exit 0
+        gh issue create --title "$title" --body "The token that starts the blog's favorites workflow expires on $EXPIRES ($days days left). Once it has expired, the feed is still published, but the favorites page on the blog is only refreshed by the nightly blog deploy.
+
+        1. Regenerate the fine-grained token *star-collector-blog-dispatch* (repository ping13/blog, Actions: Read and write): https://github.com/settings/personal-access-tokens
+        2. Store it and the new expiry date:
+
+        \`\`\`bash
+        gh secret set BLOG_DISPATCH_TOKEN --env default --repo $GH_REPO
+        gh variable set BLOG_DISPATCH_TOKEN_EXPIRES --repo $GH_REPO --body YYYY-MM-DD
+        \`\`\`
+
+        Close this issue afterwards."
+
     - name: 🔔 Remind about LinkedIn token
       if: always()
       continue-on-error: true
