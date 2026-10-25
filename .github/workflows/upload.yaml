@@ -60,7 +60,7 @@ jobs:
     - name: ⭐ Rebuild favorites page on the blog
       env:
         GH_TOKEN: ${{ secrets.BLOG_DISPATCH_TOKEN }}
-      run: gh workflow run favorites.yaml --repo ping13/blog
+      run: gh workflow run favorites.yaml --repo ping13/blog --ref main
 
     - name: 🔔 Remind about blog dispatch token
       if: always()
